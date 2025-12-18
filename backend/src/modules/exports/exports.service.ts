@@ -11,7 +11,7 @@ export class ExportsService {
     private prisma: PrismaService,
     private groupsService: GroupsService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   async createExportToken(userId: string, groupId: string, dto: CreateExportTokenDto) {
     await this.groupsService.getGroupWithAccessCheck(userId, groupId);
@@ -146,6 +146,42 @@ export class ExportsService {
     const content = contacts.map((c) => this.generateVcard(c)).join('\n');
 
     return { filename: `${group.slug}-contacts.vcf`, content };
+  }
+
+  async exportByInvitationSlug(slug: string, format: 'csv' | 'vcf') {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { slug },
+      include: { group: true },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation introuvable');
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      throw new ForbiddenException('Invitation expiree');
+    }
+
+    const contacts = await this.prisma.contact.findMany({
+      where: { groupId: invitation.groupId },
+      orderBy: { lastName: 'asc' },
+    });
+
+    if (format === 'vcf') {
+      const content = contacts.map((c) => this.generateVcard(c)).join('\n');
+      return {
+        filename: `${invitation.group.slug}-contacts.vcf`,
+        content,
+        contentType: 'text/vcard',
+      };
+    }
+
+    const content = this.generateCsvContent(contacts);
+    return {
+      filename: `${invitation.group.slug}-contacts.csv`,
+      content,
+      contentType: 'text/csv',
+    };
   }
 
   private generateCsvContent(contacts: Array<{

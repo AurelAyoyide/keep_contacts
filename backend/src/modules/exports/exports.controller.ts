@@ -7,7 +7,7 @@ import { CreateExportTokenDto } from './dto/create-export-token.dto';
 
 @Controller()
 export class ExportsController {
-  constructor(private exportsService: ExportsService) {}
+  constructor(private exportsService: ExportsService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('groups/:groupId/export/token')
@@ -73,6 +73,24 @@ export class ExportsController {
     @Res() res: Response,
   ) {
     const { filename, content } = await this.exportsService.exportVcf(user.userId, groupId);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+  }
+
+  @Get('export/invitation/:slug/csv')
+  async exportInvitationCsv(@Param('slug') slug: string, @Res() res: Response) {
+    const { filename, content } = await this.exportsService.exportByInvitationSlug(slug, 'csv');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+  }
+
+  @Get('export/invitation/:slug/vcf')
+  async exportInvitationVcf(@Param('slug') slug: string, @Res() res: Response) {
+    const { filename, content } = await this.exportsService.exportByInvitationSlug(slug, 'vcf');
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
