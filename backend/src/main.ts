@@ -8,6 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
+    origin: process.env.FRONTEND_URL || '*',
+    credentials: true,
     exposedHeaders: ['Content-Disposition'],
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
