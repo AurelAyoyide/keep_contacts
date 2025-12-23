@@ -8,7 +8,7 @@
     "start:prod": "node dist/main.js",
     "dev": "ts-node-dev --respawn src/main.ts",
     "dev:nest": "nest start --watch",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "nest build",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
@@ -24,6 +24,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
     "@prisma/client": "^5.0.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
@@ -35,7 +36,6 @@
     "typescript": "^5.3.0"
   },
   "devDependencies": {
-    "@nestjs/schematics": "^10.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
