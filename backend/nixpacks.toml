@@ -12,3 +12,6 @@ cmds = [
 
 [start]
 cmd = "npx prisma migrate deploy && node dist/main.js"
+
+[variables]
+PORT = "8080"
