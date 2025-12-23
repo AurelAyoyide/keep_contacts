@@ -5,12 +5,15 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/main",
+    "start:prod": "node dist/main.js",
     "dev": "ts-node-dev --respawn src/main.ts",
     "dev:nest": "nest start --watch",
     "build": "nest build",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "prisma:migrate": "prisma migrate deploy",
+    "postinstall": "prisma generate && prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
