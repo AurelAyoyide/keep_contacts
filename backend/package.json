@@ -12,9 +12,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset --force",
-    "prisma:migrate": "prisma migrate deploy",
-    "postinstall": "prisma generate && prisma migrate deploy && nest build",
-    "heroku-postbuild": "npm run build"
+    "prisma:migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@nestjs/cli": "^10.0.0",
