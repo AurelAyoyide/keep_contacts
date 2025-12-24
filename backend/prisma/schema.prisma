@@ -68,15 +68,16 @@ model Invitation {
 }
 
 model Contact {
-  id        String   @id @default(cuid())
-  firstName String
-  lastName  String
-  phone     String
-  email     String?
-  tag       String?
-  groupId   String
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  firstName      String
+  lastName       String
+  phone          String
+  alternatePhone String?
+  email          String?
+  tag            String?
+  groupId        String
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
 
   @@index([groupId])
   @@index([phone])

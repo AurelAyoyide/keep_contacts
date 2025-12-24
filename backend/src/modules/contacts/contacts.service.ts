@@ -3,19 +3,20 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { GroupsService } from '../groups/groups.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
-import { normalizePhone } from '../../common/utils/phone.util';
+import { normalizePhone, generateAlternatePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class ContactsService {
   constructor(
     private prisma: PrismaService,
     private groupsService: GroupsService,
-  ) {}
+  ) { }
 
   async createPublic(dto: CreateContactDto) {
     const group = await this.groupsService.getGroupByInviteSlug(dto.slug);
 
     const phone = normalizePhone(dto.phone);
+    const alternatePhone = generateAlternatePhone(dto.phone, dto.countryCode);
     const tag = group.organization.autoTag || dto.tag;
 
     await this.prisma.contact.create({
@@ -24,6 +25,7 @@ export class ContactsService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone,
+        alternatePhone,
         email: dto.email,
         tag,
       },

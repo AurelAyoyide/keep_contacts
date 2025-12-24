@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
+import { CountryCodeSelect } from '@/components/ui/CountryCodeSelect';
 import { CheckCircle, Users, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
@@ -29,6 +30,7 @@ export default function InvitationPage() {
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
+    const [countryCode, setCountryCode] = useState('+229'); // Default to Benin
 
     const { data: info, isLoading, error: queryError } = useQuery({
         queryKey: ['invitation', slug],
@@ -50,6 +52,7 @@ export default function InvitationPage() {
                 firstName,
                 lastName,
                 phone,
+                countryCode,
                 email: email || undefined,
             });
             setSubmitted(true);
@@ -105,6 +108,7 @@ export default function InvitationPage() {
                         setLastName('');
                         setPhone('');
                         setEmail('');
+                        setCountryCode('+229');
                     }}>
                         Submit another response
                     </Button>
@@ -149,14 +153,22 @@ export default function InvitationPage() {
                             />
                         </div>
 
-                        <Input
-                            label="Phone Number"
-                            placeholder="+123456789"
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            required
-                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <CountryCodeSelect
+                                label="Country"
+                                value={countryCode}
+                                onChange={setCountryCode}
+                            />
+
+                            <Input
+                                label="Phone Number"
+                                placeholder="96811859"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                required
+                            />
+                        </div>
 
                         <Input
                             label="Email Address (Optional)"

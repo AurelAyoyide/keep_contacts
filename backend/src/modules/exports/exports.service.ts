@@ -82,7 +82,7 @@ export class ExportsService {
   async exportWithToken(token: string) {
     const exportToken = await this.prisma.exportToken.findUnique({
       where: { token },
-      include: { group: true },
+      include: { group: { include: { organization: true } } },
     });
 
     if (!exportToken) {
@@ -106,7 +106,7 @@ export class ExportsService {
     });
 
     if (exportToken.format === 'vcf') {
-      const content = contacts.map((c) => this.generateVcard(c)).join('\n');
+      const content = contacts.map((c) => this.generateVcard(c, exportToken.group.organization.name)).join('\n');
       return {
         filename: `${exportToken.group.slug}-contacts.vcf`,
         content,
@@ -141,9 +141,10 @@ export class ExportsService {
     const contacts = await this.prisma.contact.findMany({
       where: { groupId },
       orderBy: { lastName: 'asc' },
+      include: { group: { include: { organization: true } } },
     });
 
-    const content = contacts.map((c) => this.generateVcard(c)).join('\n');
+    const content = contacts.map((c) => this.generateVcard(c, c.group.organization.name)).join('\n');
 
     return { filename: `${group.slug}-contacts.vcf`, content };
   }
@@ -151,7 +152,7 @@ export class ExportsService {
   async exportByInvitationSlug(slug: string, format: 'csv' | 'vcf') {
     const invitation = await this.prisma.invitation.findUnique({
       where: { slug },
-      include: { group: true },
+      include: { group: { include: { organization: true } } },
     });
 
     if (!invitation) {
@@ -168,7 +169,7 @@ export class ExportsService {
     });
 
     if (format === 'vcf') {
-      const content = contacts.map((c) => this.generateVcard(c)).join('\n');
+      const content = contacts.map((c) => this.generateVcard(c, invitation.group.organization.name)).join('\n');
       return {
         filename: `${invitation.group.slug}-contacts.vcf`,
         content,
@@ -214,16 +215,22 @@ export class ExportsService {
     firstName: string;
     lastName: string;
     phone: string;
+    alternatePhone?: string | null;
     email?: string | null;
     tag?: string | null;
-  }): string {
+  }, organizationName: string): string {
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
       `N:${contact.lastName};${contact.firstName};;;`,
-      `FN:${contact.firstName} ${contact.lastName}`,
+      `FN:${contact.firstName} ${contact.lastName} ${organizationName}`,
       `TEL;TYPE=CELL:${contact.phone}`,
     ];
+
+    // Add alternate phone if it exists
+    if (contact.alternatePhone) {
+      lines.push(`TEL;TYPE=CELL:${contact.alternatePhone}`);
+    }
 
     if (contact.email) {
       lines.push(`EMAIL:${contact.email}`);

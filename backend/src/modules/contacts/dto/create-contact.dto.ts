@@ -17,6 +17,10 @@ export class CreateContactDto {
   phone: string;
 
   @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
   @IsEmail({}, { message: 'Email invalide' })
   email?: string;
 
