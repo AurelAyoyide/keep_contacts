@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GroupsService } from '../groups/groups.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
-import { normalizePhone, generateAlternatePhone } from '../../common/utils/phone.util';
+import { parseAndValidatePhone } from '../../common/utils/phone.util';
 
 @Injectable()
 export class ContactsService {
@@ -15,8 +15,14 @@ export class ContactsService {
   async createPublic(dto: CreateContactDto) {
     const group = await this.groupsService.getGroupByInviteSlug(dto.slug);
 
-    const phone = normalizePhone(dto.phone);
-    const alternatePhone = generateAlternatePhone(dto.phone, dto.countryCode);
+    // Parse and validate phone number
+    const countryCode = dto.countryCode || 'BJ'; // Default to Benin
+    const phoneResult = parseAndValidatePhone(dto.phone, countryCode);
+
+    if (!phoneResult.isValid) {
+      throw new BadRequestException(phoneResult.error || 'Invalid phone number');
+    }
+
     const tag = group.organization.autoTag || dto.tag;
 
     await this.prisma.contact.create({
@@ -24,9 +30,10 @@ export class ContactsService {
         groupId: group.id,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        phone,
-        alternatePhone,
+        phone: phoneResult.phone,
+        alternatePhone: phoneResult.alternatePhone,
         email: dto.email,
+        dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : null,
         tag,
       },
     });
@@ -35,11 +42,21 @@ export class ContactsService {
   }
 
   async getInvitationInfo(slug: string) {
-    const group = await this.groupsService.getGroupByInviteSlug(slug);
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { slug },
+      include: { group: { include: { organization: true } } },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    const group = invitation.group;
 
     return {
       groupName: group.name,
       organizationName: group.organization.name,
+      allowDownload: invitation.allowDownload,
     };
   }
 
@@ -61,7 +78,18 @@ export class ContactsService {
 
     const data: Record<string, unknown> = { ...dto };
     if (dto.phone) {
-      data.phone = normalizePhone(dto.phone);
+      const countryCode = dto.countryCode || 'BJ';
+      const phoneResult = parseAndValidatePhone(dto.phone, countryCode);
+      if (!phoneResult.isValid) {
+        throw new BadRequestException(phoneResult.error || 'Invalid phone number');
+      }
+      data.phone = phoneResult.phone;
+      data.alternatePhone = phoneResult.alternatePhone;
+    }
+
+    // Convert dateOfBirth string to Date if provided
+    if (dto.dateOfBirth !== undefined) {
+      data.dateOfBirth = dto.dateOfBirth ? new Date(dto.dateOfBirth) : null;
     }
 
     return this.prisma.contact.update({ where: { id }, data });

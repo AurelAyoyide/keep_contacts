@@ -28,7 +28,7 @@ src/
     ├── organizations/      # Gestion des organisations
     ├── groups/             # Gestion des groupes
     ├── contacts/           # Gestion des contacts
-    └── exports/            # Export CSV/VCF + Tokens
+    └── exports/            # Export VCF + Tokens
 ```
 
 ## Modele de Donnees
@@ -120,7 +120,6 @@ BASE_URL="http://localhost:3000"
 
 | Methode | Route | Description | Auth |
 |---------|-------|-------------|------|
-| GET | `/groups/:id/export/csv` | Export CSV (admin) | Oui |
 | GET | `/groups/:id/export/vcf` | Export VCF (admin) | Oui |
 | POST | `/groups/:id/export/token` | Generer token d'export | Oui |
 | GET | `/groups/:id/export/tokens` | Lister tokens d'export | Oui |
@@ -182,7 +181,7 @@ curl -X POST http://localhost:3000/contacts \
 curl -X POST http://localhost:3000/groups/<group_id>/export/token \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"expiresInHours":48,"format":"csv"}'
+  -d '{"expiresInHours":48}'
 ```
 
 Reponse :
@@ -190,7 +189,7 @@ Reponse :
 {
   "id": "clx...",
   "token": "a1b2c3d4...",
-  "format": "csv",
+  "format": "vcf",
   "expiresAt": "2025-12-05T19:00:00.000Z",
   "url": "http://localhost:3000/export?token=a1b2c3d4..."
 }
@@ -219,10 +218,6 @@ curl -X POST http://localhost:3000/groups/<group_id>/export/tokens/<token_id>/re
 ### 10. Export Direct (Admin uniquement)
 
 ```bash
-# CSV
-curl -O http://localhost:3000/groups/<group_id>/export/csv \
-  -H "Authorization: Bearer <token>"
-
 # VCF
 curl -O http://localhost:3000/groups/<group_id>/export/vcf \
   -H "Authorization: Bearer <token>"
@@ -242,7 +237,7 @@ curl -O http://localhost:3000/groups/<group_id>/export/vcf \
 
 1. Admin genere un token d'export (`POST /groups/:id/export/token`)
 2. Le lien est partage aux membres (ex: `https://app.com/export?token=xyz`)
-3. Chaque membre peut telecharger le CSV/VCF
+3. Chaque membre peut telecharger les contacts en VCF (vCard)
 4. Le token expire automatiquement apres la duree definie
 5. Admin peut revoquer le token a tout moment
 

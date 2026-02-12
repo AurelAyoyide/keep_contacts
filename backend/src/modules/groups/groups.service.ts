@@ -3,7 +3,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { generateSlug, generateInviteSlug } from '../../common/utils/slug.util';
+import { getExpirationDate } from '../../common/utils/token.util';
 
 @Injectable()
 export class GroupsService {
@@ -56,16 +58,96 @@ export class GroupsService {
     return { message: 'Groupe supprime' };
   }
 
-  async createInvitation(userId: string, groupId: string) {
+  async createInvitation(userId: string, groupId: string, dto?: CreateInvitationDto) {
     await this.getGroupWithAccessCheck(userId, groupId);
 
     const slug = generateInviteSlug();
+    const data: any = { groupId, slug };
+
+    if (dto?.allowDownload !== undefined) {
+      data.allowDownload = dto.allowDownload;
+    }
+
+    if (dto?.expiresInHours) {
+      data.expiresAt = getExpirationDate(dto.expiresInHours);
+    }
 
     const invitation = await this.prisma.invitation.create({
-      data: { groupId, slug },
+      data,
     });
 
-    return { slug: invitation.slug };
+    return {
+      id: invitation.id,
+      slug: invitation.slug,
+      allowDownload: invitation.allowDownload,
+      expiresAt: invitation.expiresAt,
+    };
+  }
+
+  async listInvitations(userId: string, groupId: string) {
+    await this.getGroupWithAccessCheck(userId, groupId);
+
+    const invitations = await this.prisma.invitation.findMany({
+      where: { groupId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        slug: true,
+        allowDownload: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+    });
+
+    return invitations.map((inv) => ({
+      ...inv,
+      isExpired: inv.expiresAt ? inv.expiresAt < new Date() : false,
+    }));
+  }
+
+  async updateInvitation(
+    userId: string,
+    groupId: string,
+    invitationId: string,
+    dto: CreateInvitationDto,
+  ) {
+    await this.getGroupWithAccessCheck(userId, groupId);
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { id: invitationId, groupId },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    const data: any = {};
+    if (dto.allowDownload !== undefined) {
+      data.allowDownload = dto.allowDownload;
+    }
+
+    const updated = await this.prisma.invitation.update({
+      where: { id: invitationId },
+      data,
+    });
+
+    return updated;
+  }
+
+  async deleteInvitation(userId: string, groupId: string, invitationId: string) {
+    await this.getGroupWithAccessCheck(userId, groupId);
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { id: invitationId, groupId },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    await this.prisma.invitation.delete({ where: { id: invitationId } });
+
+    return { message: 'Invitation deleted' };
   }
 
   async getGroupWithAccessCheck(userId: string, groupId: string) {

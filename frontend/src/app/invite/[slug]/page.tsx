@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
-import { CountryCodeSelect } from '@/components/ui/CountryCodeSelect';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { CheckCircle, Users, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
@@ -16,6 +16,7 @@ interface InvitationInfo {
     groupName: string;
     organizationName: string;
     slug: string;
+    allowDownload?: boolean;
 }
 
 export default function InvitationPage() {
@@ -30,7 +31,8 @@ export default function InvitationPage() {
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
-    const [countryCode, setCountryCode] = useState('+229'); // Default to Benin
+    const [dateOfBirth, setDateOfBirth] = useState('');
+    const [countryCode, setCountryCode] = useState('BJ'); // Default to Benin (ISO code)
 
     const { data: info, isLoading, error: queryError } = useQuery({
         queryKey: ['invitation', slug],
@@ -54,6 +56,7 @@ export default function InvitationPage() {
                 phone,
                 countryCode,
                 email: email || undefined,
+                dateOfBirth: dateOfBirth || undefined,
             });
             setSubmitted(true);
         } catch (err: any) {
@@ -108,7 +111,8 @@ export default function InvitationPage() {
                         setLastName('');
                         setPhone('');
                         setEmail('');
-                        setCountryCode('+229');
+                        setDateOfBirth('');
+                        setCountryCode('BJ');
                     }}>
                         Submit another response
                     </Button>
@@ -153,20 +157,14 @@ export default function InvitationPage() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <CountryCodeSelect
-                                label="Country"
-                                value={countryCode}
-                                onChange={setCountryCode}
-                            />
-
-                            <Input
-                                label="Phone Number"
+                        <div>
+                            <PhoneInput
+                                label="Numéro de téléphone"
+                                countryCode={countryCode}
+                                phoneNumber={phone}
+                                onCountryChange={setCountryCode}
+                                onPhoneChange={setPhone}
                                 placeholder="96811859"
-                                type="tel"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                required
                             />
                         </div>
 
@@ -178,6 +176,14 @@ export default function InvitationPage() {
                             onChange={(e) => setEmail(e.target.value)}
                         />
 
+                        <Input
+                            label="Date of Birth (Optional)"
+                            placeholder="YYYY-MM-DD"
+                            type="date"
+                            value={dateOfBirth}
+                            onChange={(e) => setDateOfBirth(e.target.value)}
+                        />
+
                         {errorMsg && (
                             <p className="text-sm text-destructive text-center">{errorMsg}</p>
                         )}
@@ -186,19 +192,18 @@ export default function InvitationPage() {
                             Submit Contact
                         </Button>
 
-                        <div className="text-center pt-4 border-t mt-4">
-                            <p className="text-xs text-muted-foreground mb-3">
-                                Download the current contact list for this group:
-                            </p>
-                            <div className="flex gap-2 justify-center">
-                                <Button type="button" variant="outline" size="sm" onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/csv`, '_blank')}>
-                                    Download CSV
-                                </Button>
-                                <Button type="button" variant="outline" size="sm" onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, '_blank')}>
-                                    Download VCF
-                                </Button>
+                        {info.allowDownload && (
+                            <div className="text-center pt-4 border-t mt-4">
+                                <p className="text-xs text-muted-foreground mb-3">
+                                    Download the current contact list for this group:
+                                </p>
+                                <div className="flex gap-2 justify-center">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, '_blank')}>
+                                        Download Contacts
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="text-center pt-4">
                             <p className="text-xs text-muted-foreground">

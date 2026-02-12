@@ -23,7 +23,7 @@ export class ExportsService {
       data: {
         token,
         groupId,
-        format: dto.format || 'csv',
+        format: 'vcf',
         expiresAt,
       },
     });
@@ -105,34 +105,21 @@ export class ExportsService {
       orderBy: { lastName: 'asc' },
     });
 
-    if (exportToken.format === 'vcf') {
-      const content = contacts.map((c) => this.generateVcard(c, exportToken.group.organization.name)).join('\n');
-      return {
-        filename: `${exportToken.group.slug}-contacts.vcf`,
-        content,
-        contentType: 'text/vcard',
-      };
-    }
-
-    const content = this.generateCsvContent(contacts);
+    // Only support VCF
+    const content = contacts
+      .map((c) =>
+        this.generateVcard(
+          c,
+          exportToken.group.organization.autoTag,
+          exportToken.group.organization.tagEnabled,
+        ),
+      )
+      .join('\n');
     return {
-      filename: `${exportToken.group.slug}-contacts.csv`,
+      filename: `${exportToken.group.slug}-contacts.vcf`,
       content,
-      contentType: 'text/csv',
+      contentType: 'text/vcard',
     };
-  }
-
-  async exportCsv(userId: string, groupId: string) {
-    const group = await this.groupsService.getGroupWithAccessCheck(userId, groupId);
-
-    const contacts = await this.prisma.contact.findMany({
-      where: { groupId },
-      orderBy: { lastName: 'asc' },
-    });
-
-    const content = this.generateCsvContent(contacts);
-
-    return { filename: `${group.slug}-contacts.csv`, content };
   }
 
   async exportVcf(userId: string, groupId: string) {
@@ -144,12 +131,20 @@ export class ExportsService {
       include: { group: { include: { organization: true } } },
     });
 
-    const content = contacts.map((c) => this.generateVcard(c, c.group.organization.name)).join('\n');
+    const content = contacts
+      .map((c) =>
+        this.generateVcard(
+          c,
+          c.group.organization.autoTag,
+          c.group.organization.tagEnabled,
+        ),
+      )
+      .join('\n');
 
     return { filename: `${group.slug}-contacts.vcf`, content };
   }
 
-  async exportByInvitationSlug(slug: string, format: 'csv' | 'vcf') {
+  async exportByInvitationSlug(slug: string) {
     const invitation = await this.prisma.invitation.findUnique({
       where: { slug },
       include: { group: { include: { organization: true } } },
@@ -163,67 +158,65 @@ export class ExportsService {
       throw new ForbiddenException('Invitation expiree');
     }
 
+    if (!invitation.allowDownload) {
+      throw new ForbiddenException('Telechargement desactive pour cette invitation');
+    }
+
     const contacts = await this.prisma.contact.findMany({
       where: { groupId: invitation.groupId },
       orderBy: { lastName: 'asc' },
     });
 
-    if (format === 'vcf') {
-      const content = contacts.map((c) => this.generateVcard(c, invitation.group.organization.name)).join('\n');
-      return {
-        filename: `${invitation.group.slug}-contacts.vcf`,
-        content,
-        contentType: 'text/vcard',
-      };
-    }
-
-    const content = this.generateCsvContent(contacts);
+    // Only VCF
+    const content = contacts
+      .map((c) =>
+        this.generateVcard(
+          c,
+          invitation.group.organization.autoTag,
+          invitation.group.organization.tagEnabled,
+        ),
+      )
+      .join('\n');
     return {
-      filename: `${invitation.group.slug}-contacts.csv`,
+      filename: `${invitation.group.slug}-contacts.vcf`,
       content,
-      contentType: 'text/csv',
+      contentType: 'text/vcard',
     };
   }
 
-  private generateCsvContent(contacts: Array<{
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email: string | null;
-    tag: string | null;
-  }>): string {
-    const headers = ['Prenom', 'Nom', 'Telephone', 'Email', 'Tag'];
-    const rows = contacts.map((c) => [
-      this.escapeCsvField(c.firstName),
-      this.escapeCsvField(c.lastName),
-      this.escapeCsvField(c.phone),
-      this.escapeCsvField(c.email || ''),
-      this.escapeCsvField(c.tag || ''),
-    ]);
-
-    return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-  }
-
-  private escapeCsvField(field: string): string {
-    if (field.includes(',') || field.includes('"') || field.includes('\n')) {
-      return `"${field.replace(/"/g, '""')}"`;
+  private getCompleteTag(tag: string | null, autoTag: string | null, tagEnabled: boolean): string {
+    if (!tagEnabled || !autoTag) {
+      return tag || '';
     }
-    return field;
+
+    if (tag) {
+      return `${tag} - ${autoTag}`;
+    }
+
+    return autoTag;
   }
 
-  private generateVcard(contact: {
-    firstName: string;
-    lastName: string;
-    phone: string;
-    alternatePhone?: string | null;
-    email?: string | null;
-    tag?: string | null;
-  }, organizationName: string): string {
+  private generateVcard(
+    contact: {
+      firstName: string;
+      lastName: string;
+      phone: string;
+      alternatePhone?: string | null;
+      email?: string | null;
+      dateOfBirth?: Date | null;
+      tag?: string | null;
+    },
+    autoTag?: string | null,
+    tagEnabled: boolean = true,
+  ): string {
+    const completeTag = this.getCompleteTag(contact.tag || null, autoTag || null, tagEnabled);
+    const tagPart = completeTag ? ` {${completeTag}}` : '';
+
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
       `N:${contact.lastName};${contact.firstName};;;`,
-      `FN:${contact.firstName} ${contact.lastName} ${organizationName}`,
+      `FN:${contact.firstName} ${contact.lastName}${tagPart}`,
       `TEL;TYPE=CELL:${contact.phone}`,
     ];
 
@@ -236,8 +229,13 @@ export class ExportsService {
       lines.push(`EMAIL:${contact.email}`);
     }
 
-    if (contact.tag) {
-      lines.push(`CATEGORIES:${contact.tag}`);
+    // Add date of birth if it exists
+    if (contact.dateOfBirth) {
+      const bday = new Date(contact.dateOfBirth);
+      const year = bday.getFullYear();
+      const month = String(bday.getMonth() + 1).padStart(2, '0');
+      const day = String(bday.getDate()).padStart(2, '0');
+      lines.push(`BDAY:${year}-${month}-${day}`);
     }
 
     lines.push('END:VCARD');

@@ -3,6 +3,7 @@ export interface Organization {
     name: string;
     slug: string;
     autoTag?: string;
+    tagEnabled?: boolean;
     createdAt: string;
     updatedAt: string;
     _count?: {
@@ -30,6 +31,8 @@ export interface Contact {
     phone: string;
     email?: string;
     tag?: string;
+    countryCode?: string;
+    dateOfBirth?: string | Date;
     groupId: string;
     createdAt: string;
 }
@@ -39,6 +42,7 @@ export interface Invitation {
     slug: string;
     groupId: string;
     expiresAt?: string;
+    allowDownload?: boolean;
     createdAt: string;
 }
 
@@ -46,7 +50,7 @@ export interface ExportToken {
     id: string;
     token: string;
     groupId: string;
-    format: 'csv' | 'vcf';
+    format: 'vcf';
     expiresAt: string;
     usedAt?: string;
     createdAt: string;

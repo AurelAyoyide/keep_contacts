@@ -16,6 +16,7 @@ export class OrganizationsService {
         name: dto.name,
         slug,
         autoTag: dto.autoTag,
+        tagEnabled: dto.tagEnabled ?? true,
         admins: {
           create: { userId, role: 'owner' },
         },
@@ -40,6 +41,7 @@ export class OrganizationsService {
       name: uo.organization.name,
       slug: uo.organization.slug,
       autoTag: uo.organization.autoTag,
+      tagEnabled: uo.organization.tagEnabled,
       role: uo.role,
       groupsCount: uo.organization._count.groups,
     }));
@@ -69,6 +71,9 @@ export class OrganizationsService {
     }
     if (dto.autoTag !== undefined) {
       data.autoTag = dto.autoTag;
+    }
+    if (dto.tagEnabled !== undefined) {
+      data.tagEnabled = dto.tagEnabled;
     }
 
     return this.prisma.organization.update({ where: { id }, data });

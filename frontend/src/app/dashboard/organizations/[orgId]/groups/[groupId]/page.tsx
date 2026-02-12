@@ -9,7 +9,11 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Card } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { GenerateInvitationButton } from '@/components/groups/GenerateInvitationButton';
+import { EditGroupModal } from '@/components/groups/EditGroupModal';
+import { ManageInvitationsModal } from '@/components/groups/ManageInvitationsModal';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
+import { EditContactModal } from '@/components/contacts/EditContactModal';
+import { DeleteContactModal } from '@/components/contacts/DeleteContactModal';
 import { useGlobalToast } from '@/components/ui/Toast';
 import { Group, Organization, Contact } from '@/types';
 import api from '@/lib/api';
@@ -24,10 +28,14 @@ export default function GroupDetailsPage() {
     const { success, error } = useGlobalToast();
     const queryClient = useQueryClient();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isManageInvitationsOpen, setIsManageInvitationsOpen] = useState(false);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-    const [isDownloading, setIsDownloading] = useState<'csv' | 'vcf' | null>(null);
+    const [isDownloading, setIsDownloading] = useState<'vcf' | null>(null);
+    const [editingContact, setEditingContact] = useState<Contact | null>(null);
+    const [deletingContact, setDeletingContact] = useState<Contact | null>(null);
 
-    const handleDownload = async (format: 'csv' | 'vcf') => {
+    const handleDownload = async (format: 'vcf') => {
         setIsDownloading(format);
         try {
             const response = await api.get(`/groups/${groupId}/export/${format}`, {
@@ -148,6 +156,9 @@ export default function GroupDetailsPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                        <Settings className="mr-2 h-4 w-4" /> Edit
+                    </Button>
                     <Button variant="destructive" size="sm" onClick={() => setIsDeleteModalOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Group
                     </Button>
@@ -159,12 +170,8 @@ export default function GroupDetailsPage() {
                 <div className="md:col-span-2 space-y-6">
                     <ContactsTable
                         contacts={contacts || []}
-                        onEdit={(contact) => console.log('Edit', contact)} // To implement
-                        onDelete={(contact) => {
-                            if (confirm('Delete this contact?')) {
-                                deleteContactMutation.mutate(contact.id);
-                            }
-                        }}
+                        onEdit={(contact) => setEditingContact(contact)}
+                        onDelete={(contact) => setDeletingContact(contact)}
                     />
                 </div>
 
@@ -176,6 +183,14 @@ export default function GroupDetailsPage() {
                             Share this link to collect contacts publicly.
                         </p>
                         <GenerateInvitationButton groupId={groupId} />
+                        <Button
+                            variant="outline"
+                            className="w-full mt-2"
+                            size="sm"
+                            onClick={() => setIsManageInvitationsOpen(true)}
+                        >
+                            Manage All Links
+                        </Button>
                     </Card>
 
                     <Card className="p-6">
@@ -184,13 +199,6 @@ export default function GroupDetailsPage() {
                             Download your contacts or generate a secure share link.
                         </p>
                         <div className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start"
-                                onClick={() => handleDownload('csv')}
-                                isLoading={isDownloading === 'csv'}
-                            >
-                                <Download className="mr-2 h-4 w-4" />
-                                Download CSV
-                            </Button>
                             <Button variant="outline" className="w-full justify-start"
                                 onClick={() => handleDownload('vcf')}
                                 isLoading={isDownloading === 'vcf'}
@@ -225,11 +233,42 @@ export default function GroupDetailsPage() {
                 </div>
             </Modal>
 
+            <EditGroupModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                group={group}
+                orgId={orgId}
+            />
+
+            <ManageInvitationsModal
+                isOpen={isManageInvitationsOpen}
+                onClose={() => setIsManageInvitationsOpen(false)}
+                groupId={groupId}
+            />
+
             <ManageExportTokensModal
                 isOpen={isExportModalOpen}
                 onClose={() => setIsExportModalOpen(false)}
                 groupId={groupId}
             />
+
+            {editingContact && (
+                <EditContactModal
+                    isOpen={!!editingContact}
+                    onClose={() => setEditingContact(null)}
+                    contact={editingContact}
+                    groupId={groupId}
+                />
+            )}
+
+            {deletingContact && (
+                <DeleteContactModal
+                    isOpen={!!deletingContact}
+                    onClose={() => setDeletingContact(null)}
+                    contact={deletingContact}
+                    groupId={groupId}
+                />
+            )}
         </div>
     );
 }

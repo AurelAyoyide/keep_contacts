@@ -9,6 +9,6 @@ export class CreateExportTokenDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['csv', 'vcf'])
-  format?: string = 'csv';
+  @IsIn(['vcf'])
+  format?: string = 'vcf';
 }

@@ -72,8 +72,8 @@ export default function Home() {
             />
             <FeatureCard
               icon={<Download className="h-6 w-6 text-orange-500" />}
-              title="Multiple Formats"
-              description="Export your data in CSV for spreadsheets or VCF (vCard) for direct phone import."
+              title="VCF Export"
+              description="Export your contacts in VCF (vCard) format for seamless mobile phone import."
             />
             <FeatureCard
               icon={<Lock className="h-6 w-6 text-red-500" />}

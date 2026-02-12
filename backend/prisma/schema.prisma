@@ -27,6 +27,7 @@ model Organization {
   name      String
   slug      String             @unique
   autoTag   String?
+  tagEnabled Boolean           @default(true)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
   admins    UserOrganization[]
@@ -59,12 +60,13 @@ model Group {
 }
 
 model Invitation {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  groupId   String
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  expiresAt DateTime?
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  groupId       String
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime?
+  allowDownload Boolean  @default(true)
+  createdAt     DateTime @default(now())
 }
 
 model Contact {
@@ -74,6 +76,7 @@ model Contact {
   phone          String
   alternatePhone String?
   email          String?
+  dateOfBirth    DateTime?
   tag            String?
   groupId        String
   group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -88,7 +91,7 @@ model ExportToken {
   token     String    @unique
   groupId   String
   group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  format    String    @default("csv")
+  format    String    @default("vcf")
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())

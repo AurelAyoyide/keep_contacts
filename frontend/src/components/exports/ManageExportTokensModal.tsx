@@ -16,7 +16,7 @@ interface ManageExportTokensModalProps {
 }
 
 export function ManageExportTokensModal({ isOpen, onClose, groupId }: ManageExportTokensModalProps) {
-    const [format, setFormat] = useState<'csv' | 'vcf'>('csv');
+    const [format, setFormat] = useState<'vcf'>('vcf');
     const [hours, setHours] = useState(24);
     const [isLoading, setIsLoading] = useState(false);
     const { success, error } = useGlobalToast();
@@ -53,18 +53,7 @@ export function ManageExportTokensModal({ isOpen, onClose, groupId }: ManageExpo
                 <div className="p-4 bg-muted/50 rounded-lg">
                     <h4 className="font-medium mb-3 text-sm">Generate New Token</h4>
                     <form onSubmit={handleGenerate} className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-xs font-medium mb-1 block">Format</label>
-                                <select
-                                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                    value={format}
-                                    onChange={(e) => setFormat(e.target.value as 'csv' | 'vcf')}
-                                >
-                                    <option value="csv">CSV (Spreadsheet)</option>
-                                    <option value="vcf">VCF (Contacts)</option>
-                                </select>
-                            </div>
+                        <div className="grid grid-cols-1 gap-3">
                             <div>
                                 <label className="text-xs font-medium mb-1 block">Expires in (Hours)</label>
                                 <Input

@@ -52,20 +52,6 @@ export class ExportsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('groups/:groupId/export/csv')
-  async exportCsv(
-    @CurrentUser() user: CurrentUserData,
-    @Param('groupId') groupId: string,
-    @Res() res: Response,
-  ) {
-    const { filename, content } = await this.exportsService.exportCsv(user.userId, groupId);
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(content);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Get('groups/:groupId/export/vcf')
   async exportVcf(
     @CurrentUser() user: CurrentUserData,
@@ -75,15 +61,6 @@ export class ExportsController {
     const { filename, content } = await this.exportsService.exportVcf(user.userId, groupId);
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(content);
-  }
-
-  @Get('export/invitation/:slug/csv')
-  async exportInvitationCsv(@Param('slug') slug: string, @Res() res: Response) {
-    const { filename, content } = await this.exportsService.exportByInvitationSlug(slug, 'csv');
-
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(content);
   }

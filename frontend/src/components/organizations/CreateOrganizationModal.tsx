@@ -16,6 +16,7 @@ interface CreateOrganizationModalProps {
 export function CreateOrganizationModal({ isOpen, onClose }: CreateOrganizationModalProps) {
     const [name, setName] = useState('');
     const [autoTag, setAutoTag] = useState('');
+    const [tagEnabled, setTagEnabled] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
     const { success, error } = useGlobalToast();
     const queryClient = useQueryClient();
@@ -27,7 +28,8 @@ export function CreateOrganizationModal({ isOpen, onClose }: CreateOrganizationM
         try {
             await api.post('/organizations', {
                 name,
-                autoTag: autoTag || undefined
+                autoTag: autoTag || undefined,
+                tagEnabled,
             });
 
             success('Organization created successfully');
@@ -35,6 +37,7 @@ export function CreateOrganizationModal({ isOpen, onClose }: CreateOrganizationM
             onClose();
             setName('');
             setAutoTag('');
+            setTagEnabled(true);
         } catch (err: any) {
             console.error(err);
             error(err.response?.data?.message || 'Failed to create organization');
@@ -63,8 +66,20 @@ export function CreateOrganizationModal({ isOpen, onClose }: CreateOrganizationM
                     placeholder="e.g. Employee"
                     value={autoTag}
                     onChange={(e) => setAutoTag(e.target.value)}
-                // helpText="This tag will be automatically applied to contacts imported into this organization."
                 />
+
+                <div className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="tagEnabled"
+                        checked={tagEnabled}
+                        onChange={(e) => setTagEnabled(e.target.checked)}
+                        className="rounded border-gray-300"
+                    />
+                    <label htmlFor="tagEnabled" className="text-sm font-medium cursor-pointer">
+                        Enable auto-tag for contacts
+                    </label>
+                </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
                     <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>

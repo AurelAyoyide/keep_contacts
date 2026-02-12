@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Plus, Settings, Trash2, ArrowLeft, Users, AlertCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Settings, Trash2, ArrowLeft, Users } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
-import { Modal } from '@/components/ui/Modal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
+import { EditOrganizationModal } from '@/components/organizations/EditOrganizationModal';
+import { DeleteOrganizationModal } from '@/components/organizations/DeleteOrganizationModal';
 import { useGlobalToast } from '@/components/ui/Toast';
 import { Organization, Group } from '@/types';
 import api from '@/lib/api';
@@ -26,6 +27,7 @@ export default function OrganizationDetailsPage() {
     const { success, error } = useGlobalToast();
 
     const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const { data: organization, isLoading } = useQuery({
@@ -33,19 +35,6 @@ export default function OrganizationDetailsPage() {
         queryFn: async () => {
             const { data } = await api.get<OrganizationWithGroups>(`/organizations/${id}`);
             return data;
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: async () => {
-            await api.delete(`/organizations/${id}`);
-        },
-        onSuccess: () => {
-            success('Organization deleted successfully');
-            router.push('/dashboard');
-        },
-        onError: (err: any) => {
-            error(err.response?.data?.message || 'Failed to delete organization');
         },
     });
 
@@ -85,12 +74,16 @@ export default function OrganizationDetailsPage() {
                         {organization.autoTag && (
                             <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-medium">
                                 Auto-tag: {organization.autoTag}
+                                {organization.tagEnabled === false && ' (disabled)'}
                             </span>
                         )}
                         <span>Created {new Date(organization.createdAt).toLocaleDateString()}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditModalOpen(true)}>
+                        <Settings className="mr-2 h-4 w-4" /> Settings
+                    </Button>
                     <Button variant="destructive" size="sm" onClick={() => setIsDeleteModalOpen(true)}>
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Org
                     </Button>
@@ -148,34 +141,17 @@ export default function OrganizationDetailsPage() {
                 organizationId={organization.id}
             />
 
-            <Modal
+            <EditOrganizationModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                organization={organization}
+            />
+
+            <DeleteOrganizationModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
-                title="Delete Organization"
-            >
-                <div className="space-y-4">
-                    <div className="flex items-start gap-3 rounded-lg bg-destructive/10 p-4 text-destructive">
-                        <AlertCircle className="h-5 w-5 mt-0.5" />
-                        <div className="text-sm font-medium">
-                            Are you sure? This action cannot be undone. All groups and contacts within
-                            <strong> {organization.name}</strong> will be permanently deleted.
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            isLoading={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate()}
-                        >
-                            Delete Organization
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
+                organization={organization}
+            />
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsBoolean } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
@@ -8,4 +8,8 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   autoTag?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  tagEnabled?: boolean;
 }
