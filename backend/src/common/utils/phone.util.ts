@@ -1,4 +1,4 @@
-import { parsePhoneNumber, isValidPhoneNumber, formatE164 } from 'libphonenumber-js';
+import { parsePhoneNumber, isValidPhoneNumber, type CountryCode } from 'libphonenumber-js';
 
 export interface ParsedPhoneResult {
   phone: string; // Full number with country code in E.164 format
@@ -23,9 +23,9 @@ export function parseAndValidatePhone(phone: string, defaultCountry: string = 'B
     const cleaned = phone.replace(/\s/g, '').trim();
 
     // Try to parse with default country
-    const parsed = parsePhoneNumber(cleaned, defaultCountry);
+    const parsed = parsePhoneNumber(cleaned, defaultCountry as CountryCode);
 
-    if (!parsed || !isValidPhoneNumber(cleaned, defaultCountry)) {
+    if (!parsed || !isValidPhoneNumber(cleaned, defaultCountry as CountryCode)) {
       return {
         phone: '',
         countryCode: getCountryCodeFromRegion(defaultCountry),
@@ -35,12 +35,12 @@ export function parseAndValidatePhone(phone: string, defaultCountry: string = 'B
     }
 
     // Get E.164 format (e.g., +22901968118159)
-    const phoneE164 = formatE164(parsed);
+    const phoneE164 = parsed.format('E.164');
     const countryCode = '+' + parsed.countryCallingCode;
 
     // Handle Benin special case: create alternate without '01'
     let alternatePhone: string | null = null;
-    if (parsed.countryCallingCode === 229) {
+    if (String(parsed.countryCallingCode) === '229') {
       alternatePhone = generateBeninAlternate(phoneE164);
     }
 
@@ -136,4 +136,24 @@ export function formatPhoneForDisplay(phone: string, countryCode?: string): stri
  */
 export function isValidPhoneFormat(phone: string): boolean {
   return /^\+[1-9]\d{6,14}$/.test(phone);
+}
+/**
+ * Normalize Benin phone for duplicate detection
+ * Both +22901968118159 and +2299681811859 normalize to +2299681811859
+ * For non-Benin numbers, returns the phone as-is
+ */
+export function normalizePhoneForDeduplication(phone: string): string {
+  if (!phone || !phone.startsWith('+229')) {
+    return phone; // Non-Benin number, return as-is
+  }
+
+  const remainder = phone.slice(4); // Remove '+229'
+
+  // If it has '01' prefix, remove it for normalization
+  if (remainder.startsWith('01')) {
+    return '+229' + remainder.slice(2);
+  }
+
+  // Already normalized (no '01' prefix)
+  return phone;
 }

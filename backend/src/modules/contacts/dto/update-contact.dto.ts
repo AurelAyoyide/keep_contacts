@@ -27,9 +27,35 @@ export class UpdateContactDto {
 
   @IsOptional()
   @IsISO8601({}, { message: 'Date of birth must be valid ISO 8601 date (YYYY-MM-DD)' })
-  dateOfBirth?: string | null; // ISO 8601 format: YYYY-MM-DD or null to clear
+  dateOfBirth?: string | null;
 
   @IsOptional()
   @IsString()
   tag?: string;
+
+  @IsOptional()
+  @IsString()
+  nickname?: string;
+
+  // Professional fields
+  @IsOptional()
+  @IsString()
+  organization?: string;
+
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
+
+  // Location fields
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
 }

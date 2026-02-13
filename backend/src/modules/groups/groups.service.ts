@@ -72,6 +72,14 @@ export class GroupsService {
       data.expiresAt = getExpirationDate(dto.expiresInHours);
     }
 
+    // Store required fields as comma-separated string
+    if (dto?.requiredFields && Array.isArray(dto.requiredFields)) {
+      data.requiredFields = dto.requiredFields.join(',');
+    } else {
+      // Default required fields
+      data.requiredFields = 'firstName,lastName,phone';
+    }
+
     const invitation = await this.prisma.invitation.create({
       data,
     });
@@ -81,6 +89,7 @@ export class GroupsService {
       slug: invitation.slug,
       allowDownload: invitation.allowDownload,
       expiresAt: invitation.expiresAt,
+      requiredFields: invitation.requiredFields.split(',').map(f => f.trim()),
     };
   }
 
@@ -95,12 +104,17 @@ export class GroupsService {
         slug: true,
         allowDownload: true,
         expiresAt: true,
+        requiredFields: true,
         createdAt: true,
       },
     });
 
     return invitations.map((inv) => ({
       ...inv,
+      requiredFields: inv.requiredFields
+        .split(',')
+        .map(f => f.trim())
+        .filter(f => f.length > 0),
       isExpired: inv.expiresAt ? inv.expiresAt < new Date() : false,
     }));
   }
@@ -126,12 +140,22 @@ export class GroupsService {
       data.allowDownload = dto.allowDownload;
     }
 
+    if (dto.requiredFields && Array.isArray(dto.requiredFields)) {
+      data.requiredFields = dto.requiredFields.join(',');
+    }
+
     const updated = await this.prisma.invitation.update({
       where: { id: invitationId },
       data,
     });
 
-    return updated;
+    return {
+      ...updated,
+      requiredFields: updated.requiredFields
+        .split(',')
+        .map(f => f.trim())
+        .filter(f => f.length > 0),
+    };
   }
 
   async deleteInvitation(userId: string, groupId: string, invitationId: string) {

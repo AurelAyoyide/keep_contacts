@@ -11,13 +11,7 @@ import { PhoneInput } from '@/components/ui/PhoneInput';
 import { CheckCircle, Users, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
-
-interface InvitationInfo {
-    groupName: string;
-    organizationName: string;
-    slug: string;
-    allowDownload?: boolean;
-}
+import { InvitationInfo } from '@/types';
 
 export default function InvitationPage() {
     const params = useParams();
@@ -32,7 +26,14 @@ export default function InvitationPage() {
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [dateOfBirth, setDateOfBirth] = useState('');
-    const [countryCode, setCountryCode] = useState('BJ'); // Default to Benin (ISO code)
+    const [nickname, setNickname] = useState('');
+    const [tag, setTag] = useState('');
+    const [organization, setOrganization] = useState('');
+    const [jobTitle, setJobTitle] = useState('');
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [country, setCountry] = useState('');
+    const [countryCode, setCountryCode] = useState('BJ'); // Default to Benin
 
     const { data: info, isLoading, error: queryError } = useQuery({
         queryKey: ['invitation', slug],
@@ -43,21 +44,66 @@ export default function InvitationPage() {
         retry: false,
     });
 
+    // Helper to check if a field is required
+    const isFieldRequired = (field: string) => {
+        return info?.requiredFields?.includes(field) ?? false;
+    };
+
+    // Helper to check if a field should be displayed
+    const shouldDisplayField = (field: string) => {
+        return info?.requiredFields?.includes(field) ?? false;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setErrorMsg('');
 
         try {
-            await api.post('/contacts', {
+            const payload: any = {
                 slug,
-                firstName,
-                lastName,
-                phone,
                 countryCode,
-                email: email || undefined,
-                dateOfBirth: dateOfBirth || undefined,
-            });
+            };
+
+            // Only include fields if they're required or have values
+            if (isFieldRequired('firstName') || firstName) {
+                payload.firstName = firstName;
+            }
+            if (isFieldRequired('lastName') || lastName) {
+                payload.lastName = lastName;
+            }
+            if (isFieldRequired('phone') || phone) {
+                payload.phone = phone;
+            }
+            if (isFieldRequired('email') || email) {
+                payload.email = email;
+            }
+            if (isFieldRequired('dateOfBirth') || dateOfBirth) {
+                payload.dateOfBirth = dateOfBirth;
+            }
+            if (isFieldRequired('nickname') || nickname) {
+                payload.nickname = nickname;
+            }
+            if (isFieldRequired('tag') || tag) {
+                payload.tag = tag;
+            }
+            if (isFieldRequired('organization') || organization) {
+                payload.organization = organization;
+            }
+            if (isFieldRequired('jobTitle') || jobTitle) {
+                payload.jobTitle = jobTitle;
+            }
+            if (isFieldRequired('address') || address) {
+                payload.address = address;
+            }
+            if (isFieldRequired('city') || city) {
+                payload.city = city;
+            }
+            if (isFieldRequired('country') || country) {
+                payload.country = country;
+            }
+
+            await api.post('/contacts', payload);
             setSubmitted(true);
         } catch (err: any) {
             console.error(err);
@@ -65,6 +111,23 @@ export default function InvitationPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleReset = () => {
+        setSubmitted(false);
+        setFirstName('');
+        setLastName('');
+        setPhone('');
+        setEmail('');
+        setDateOfBirth('');
+        setNickname('');
+        setTag('');
+        setOrganization('');
+        setJobTitle('');
+        setAddress('');
+        setCity('');
+        setCountry('');
+        setCountryCode('BJ');
     };
 
     if (isLoading) {
@@ -105,15 +168,7 @@ export default function InvitationPage() {
                     <p className="text-sm text-muted-foreground mb-6">
                         Powered by Keep Contacts
                     </p>
-                    <Button variant="outline" onClick={() => {
-                        setSubmitted(false);
-                        setFirstName('');
-                        setLastName('');
-                        setPhone('');
-                        setEmail('');
-                        setDateOfBirth('');
-                        setCountryCode('BJ');
-                    }}>
+                    <Button variant="outline" onClick={handleReset}>
                         Submit another response
                     </Button>
                 </Card>
@@ -140,49 +195,148 @@ export default function InvitationPage() {
 
                 <Card className="p-8 shadow-lg border-primary/10">
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* First Name - Usually required */}
+                        {shouldDisplayField('firstName') && (
                             <Input
-                                label="First Name"
+                                label={`First Name ${!isFieldRequired('firstName') ? '(Optional)' : ''}`}
                                 placeholder="John"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
-                                required
+                                required={isFieldRequired('firstName')}
                             />
+                        )}
+
+                        {/* Last Name - Usually required */}
+                        {shouldDisplayField('lastName') && (
                             <Input
-                                label="Last Name"
+                                label={`Last Name ${!isFieldRequired('lastName') ? '(Optional)' : ''}`}
                                 placeholder="Doe"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
-                                required
+                                required={isFieldRequired('lastName')}
                             />
-                        </div>
+                        )}
 
-                        <div>
-                            <PhoneInput
-                                label="Numéro de téléphone"
-                                countryCode={countryCode}
-                                phoneNumber={phone}
-                                onCountryChange={setCountryCode}
-                                onPhoneChange={setPhone}
-                                placeholder="96811859"
+                        {/* Phone */}
+                        {shouldDisplayField('phone') && (
+                            <div>
+                                <PhoneInput
+                                    label={`Numéro de téléphone ${!isFieldRequired('phone') ? '(Optional)' : ''}`}
+                                    countryCode={countryCode}
+                                    phoneNumber={phone}
+                                    onCountryChange={setCountryCode}
+                                    onPhoneChange={setPhone}
+                                    placeholder="96811859"
+                                />
+                            </div>
+                        )}
+
+                        {/* Email */}
+                        {shouldDisplayField('email') && (
+                            <Input
+                                label={`Email Address ${!isFieldRequired('email') ? '(Optional)' : ''}`}
+                                placeholder="john@example.com"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required={isFieldRequired('email')}
                             />
-                        </div>
+                        )}
 
-                        <Input
-                            label="Email Address (Optional)"
-                            placeholder="john@example.com"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
+                        {/* Date of Birth */}
+                        {shouldDisplayField('dateOfBirth') && (
+                            <Input
+                                label={`Date of Birth ${!isFieldRequired('dateOfBirth') ? '(Optional)' : ''}`}
+                                placeholder="YYYY-MM-DD"
+                                type="date"
+                                value={dateOfBirth}
+                                onChange={(e) => setDateOfBirth(e.target.value)}
+                                required={isFieldRequired('dateOfBirth')}
+                            />
+                        )}
 
-                        <Input
-                            label="Date of Birth (Optional)"
-                            placeholder="YYYY-MM-DD"
-                            type="date"
-                            value={dateOfBirth}
-                            onChange={(e) => setDateOfBirth(e.target.value)}
-                        />
+                        {/* Nickname */}
+                        {shouldDisplayField('nickname') && (
+                            <Input
+                                label={`Nickname ${!isFieldRequired('nickname') ? '(Optional)' : ''}`}
+                                placeholder="e.g., JD, Johnny"
+                                value={nickname}
+                                onChange={(e) => setNickname(e.target.value)}
+                                required={isFieldRequired('nickname')}
+                            />
+                        )}
+
+                        {/* Tag */}
+                        {shouldDisplayField('tag') && (
+                            <Input
+                                label={`Tag/Category ${!isFieldRequired('tag') ? '(Optional)' : ''}`}
+                                placeholder="e.g., VIP, Friend, Family"
+                                value={tag}
+                                onChange={(e) => setTag(e.target.value)}
+                                required={isFieldRequired('tag')}
+                            />
+                        )}
+
+                        {/* Professional Section */}
+                        {(shouldDisplayField('organization') || shouldDisplayField('jobTitle')) && (
+                            <div className="space-y-4 pt-2 border-t">
+                                <h3 className="text-sm font-semibold text-foreground">Professional Information</h3>
+                                {shouldDisplayField('organization') && (
+                                    <Input
+                                        label={`Organization ${!isFieldRequired('organization') ? '(Optional)' : ''}`}
+                                        placeholder="e.g., Acme Corp"
+                                        value={organization}
+                                        onChange={(e) => setOrganization(e.target.value)}
+                                        required={isFieldRequired('organization')}
+                                    />
+                                )}
+                                {shouldDisplayField('jobTitle') && (
+                                    <Input
+                                        label={`Job Title ${!isFieldRequired('jobTitle') ? '(Optional)' : ''}`}
+                                        placeholder="e.g., Developer"
+                                        value={jobTitle}
+                                        onChange={(e) => setJobTitle(e.target.value)}
+                                        required={isFieldRequired('jobTitle')}
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Location Section */}
+                        {(shouldDisplayField('address') || shouldDisplayField('city') || shouldDisplayField('country')) && (
+                            <div className="space-y-4 pt-2 border-t">
+                                <h3 className="text-sm font-semibold text-foreground">Location</h3>
+                                {shouldDisplayField('address') && (
+                                    <Input
+                                        label={`Address ${!isFieldRequired('address') ? '(Optional)' : ''}`}
+                                        placeholder="e.g., 123 Main St"
+                                        value={address}
+                                        onChange={(e) => setAddress(e.target.value)}
+                                        required={isFieldRequired('address')}
+                                    />
+                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                    {shouldDisplayField('city') && (
+                                        <Input
+                                            label={`City ${!isFieldRequired('city') ? '(Optional)' : ''}`}
+                                            placeholder="e.g., New York"
+                                            value={city}
+                                            onChange={(e) => setCity(e.target.value)}
+                                            required={isFieldRequired('city')}
+                                        />
+                                    )}
+                                    {shouldDisplayField('country') && (
+                                        <Input
+                                            label={`Country ${!isFieldRequired('country') ? '(Optional)' : ''}`}
+                                            placeholder="e.g., USA"
+                                            value={country}
+                                            onChange={(e) => setCountry(e.target.value)}
+                                            required={isFieldRequired('country')}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {errorMsg && (
                             <p className="text-sm text-destructive text-center">{errorMsg}</p>

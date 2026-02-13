@@ -68,13 +68,19 @@ export function ContactsTable({ contacts, onEdit, onDelete }: ContactsTableProps
                             {filteredContacts.map((contact) => (
                                 <tr key={contact.id} className="hover:bg-muted/30 transition-colors">
                                     <td className="px-4 py-3 font-medium">
-                                        {contact.firstName} {contact.lastName}
+                                        {(contact.firstName || '') && (contact.lastName || '') 
+                                            ? `${contact.firstName} ${contact.lastName}` 
+                                            : contact.firstName || contact.lastName || '-'}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <Phone className="h-3 w-3 text-muted-foreground" />
-                                            {contact.phone}
-                                        </div>
+                                        {contact.phone ? (
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                                {contact.phone}
+                                            </div>
+                                        ) : (
+                                            <span className="text-muted-foreground">-</span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3">
                                         {contact.email ? (

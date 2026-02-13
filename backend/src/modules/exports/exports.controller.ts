@@ -67,7 +67,7 @@ export class ExportsController {
 
   @Get('export/invitation/:slug/vcf')
   async exportInvitationVcf(@Param('slug') slug: string, @Res() res: Response) {
-    const { filename, content } = await this.exportsService.exportByInvitationSlug(slug, 'vcf');
+    const { filename, content } = await this.exportsService.exportByInvitationSlug(slug);
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

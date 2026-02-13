@@ -28,6 +28,12 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
     const [dateOfBirth, setDateOfBirth] = useState('');
     const [countryCode, setCountryCode] = useState(contact.countryCode || 'BJ'); // Default to Benin
     const [tag, setTag] = useState(contact.tag || '');
+    const [nickname, setNickname] = useState((contact as any).nickname || '');
+    const [organization, setOrganization] = useState((contact as any).organization || '');
+    const [jobTitle, setJobTitle] = useState((contact as any).jobTitle || '');
+    const [address, setAddress] = useState((contact as any).address || '');
+    const [city, setCity] = useState((contact as any).city || '');
+    const [country, setCountry] = useState((contact as any).country || '');
 
     useEffect(() => {
         if (isOpen) {
@@ -37,6 +43,12 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
             setEmail(contact.email || '');
             setCountryCode(contact.countryCode || 'BJ'); // Default to Benin
             setTag(contact.tag || '');
+            setNickname((contact as any).nickname || '');
+            setOrganization((contact as any).organization || '');
+            setJobTitle((contact as any).jobTitle || '');
+            setAddress((contact as any).address || '');
+            setCity((contact as any).city || '');
+            setCountry((contact as any).country || '');
             // Convert ISO8601 date to YYYY-MM-DD format for date input
             if (contact.dateOfBirth) {
                 const date = new Date(contact.dateOfBirth);
@@ -60,6 +72,12 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
                 countryCode,
                 tag: tag || undefined,
                 dateOfBirth: dateOfBirth || null,
+                nickname: nickname || undefined,
+                organization: organization || undefined,
+                jobTitle: jobTitle || undefined,
+                address: address || undefined,
+                city: city || undefined,
+                country: country || undefined,
             });
         },
         onSuccess: () => {
@@ -80,7 +98,8 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Edit Contact">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="max-h-[500px] overflow-y-auto pr-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                     <Input
                         label="First Name"
                         value={firstName}
@@ -125,6 +144,51 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
                     onChange={(e) => setTag(e.target.value)}
                     placeholder="e.g., VIP, Friend, Family"
                 />
+
+                <Input
+                    label="Nickname (Optional)"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="e.g., 'The Boss'"
+                />
+
+                <Input
+                    label="Organization (Optional)"
+                    value={organization}
+                    onChange={(e) => setOrganization(e.target.value)}
+                    placeholder="Company or organization name"
+                />
+
+                <Input
+                    label="Job Title (Optional)"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    placeholder="e.g., Manager, Developer"
+                />
+
+                <Input
+                    label="Address (Optional)"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Street address"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                    <Input
+                        label="City (Optional)"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City"
+                    />
+                    <Input
+                        label="Country (Optional)"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        placeholder="Country"
+                    />
+                </div>
+
+                </div>
 
                 <div className="flex justify-end gap-2 pt-4">
                     <Button variant="outline" onClick={onClose} type="button">

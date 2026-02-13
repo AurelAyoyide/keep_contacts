@@ -28,11 +28,17 @@ export interface Contact {
     id: string;
     firstName: string;
     lastName: string;
-    phone: string;
+    phone?: string;
     email?: string;
     tag?: string;
     countryCode?: string;
     dateOfBirth?: string | Date;
+    nickname?: string;
+    organization?: string;
+    jobTitle?: string;
+    address?: string;
+    city?: string;
+    country?: string;
     groupId: string;
     createdAt: string;
 }
@@ -43,7 +49,15 @@ export interface Invitation {
     groupId: string;
     expiresAt?: string;
     allowDownload?: boolean;
+    requiredFields?: string | string[]; // Can be string from API or array after parsing
     createdAt: string;
+}
+
+export interface InvitationInfo {
+    groupName: string;
+    organizationName: string;
+    allowDownload?: boolean;
+    requiredFields: string[];
 }
 
 export interface ExportToken {

@@ -60,30 +60,46 @@ model Group {
 }
 
 model Invitation {
-  id            String   @id @default(cuid())
-  slug          String   @unique
-  groupId       String
-  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  expiresAt     DateTime?
-  allowDownload Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  groupId        String
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime?
+  allowDownload  Boolean  @default(true)
+  requiredFields String   @default("firstName,lastName,phone") // JSON: ["firstName","lastName","phone",...]
+  createdAt      DateTime @default(now())
 }
 
 model Contact {
   id             String   @id @default(cuid())
-  firstName      String
-  lastName       String
-  phone          String
+  firstName      String?
+  lastName       String?
+  phone          String?
   alternatePhone String?
+  countryCode    String?  @default("BJ")
   email          String?
   dateOfBirth    DateTime?
+  nickname       String?
   tag            String?
+  
+  // Professional
+  organization   String?
+  jobTitle       String?
+  
+  // Location
+  address        String?
+  city           String?
+  country        String?
+  
   groupId        String
   group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
 
   @@index([groupId])
   @@index([phone])
+  @@index([email])
+  @@unique([groupId, phone], name: "unique_phone_per_group")
+  @@unique([groupId, email], name: "unique_email_per_group")
 }
 
 model ExportToken {

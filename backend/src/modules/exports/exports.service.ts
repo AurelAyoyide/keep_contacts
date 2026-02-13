@@ -185,40 +185,58 @@ export class ExportsService {
   }
 
   private getCompleteTag(tag: string | null, autoTag: string | null, tagEnabled: boolean): string {
-    if (!tagEnabled || !autoTag) {
-      return tag || '';
+    // If tagging is disabled, return nothing
+    if (!tagEnabled) {
+      return '';
     }
 
-    if (tag) {
-      return `${tag} - ${autoTag}`;
+    // Auto tag takes precedence over contact tag
+    if (autoTag) {
+      return autoTag;
     }
 
-    return autoTag;
+    // Use contact tag if available
+    return tag || '';
   }
 
   private generateVcard(
     contact: {
-      firstName: string;
-      lastName: string;
-      phone: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      phone?: string | null;
       alternatePhone?: string | null;
       email?: string | null;
       dateOfBirth?: Date | null;
+      nickname?: string | null;
       tag?: string | null;
+      organization?: string | null;
+      jobTitle?: string | null;
+      address?: string | null;
+      city?: string | null;
+      country?: string | null;
     },
     autoTag?: string | null,
     tagEnabled: boolean = true,
   ): string {
+    const fn = contact.firstName || '';
+    const ln = contact.lastName || '';
     const completeTag = this.getCompleteTag(contact.tag || null, autoTag || null, tagEnabled);
-    const tagPart = completeTag ? ` {${completeTag}}` : '';
+    
+    // Format: "FirstName LastName" or "FirstName LastName - Tag"
+    const fullName = [fn, ln].filter(Boolean).join(' ');
+    const displayName = completeTag ? `${fullName} - ${completeTag}` : fullName;
+    const tagSuffix = completeTag ? ` - ${completeTag}` : '';
 
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      `N:${contact.lastName};${contact.firstName};;;`,
-      `FN:${contact.firstName} ${contact.lastName}${tagPart}`,
-      `TEL;TYPE=CELL:${contact.phone}`,
+      `N:${ln};${fn};;;${tagSuffix}`,
+      `FN:${displayName}`,
     ];
+
+    if (contact.phone) {
+      lines.push(`TEL;TYPE=CELL:${contact.phone}`);
+    }
 
     // Add alternate phone if it exists
     if (contact.alternatePhone) {
@@ -236,6 +254,25 @@ export class ExportsService {
       const month = String(bday.getMonth() + 1).padStart(2, '0');
       const day = String(bday.getDate()).padStart(2, '0');
       lines.push(`BDAY:${year}-${month}-${day}`);
+    }
+
+    // Add nickname
+    if (contact.nickname) {
+      lines.push(`NICKNAME:${contact.nickname}`);
+    }
+
+    // Add organization & job title
+    if (contact.organization) {
+      lines.push(`ORG:${contact.organization}`);
+    }
+    if (contact.jobTitle) {
+      lines.push(`TITLE:${contact.jobTitle}`);
+    }
+
+    // Add address
+    if (contact.address || contact.city || contact.country) {
+      const adr = `;;${contact.address || ''};${contact.city || ''};;${contact.country || ''}`;
+      lines.push(`ADR;TYPE=HOME:${adr}`);
     }
 
     lines.push('END:VCARD');
