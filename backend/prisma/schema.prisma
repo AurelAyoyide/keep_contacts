@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -67,7 +67,21 @@ model Invitation {
   expiresAt      DateTime?
   allowDownload  Boolean  @default(true)
   requiredFields String   @default("firstName,lastName,phone") // JSON: ["firstName","lastName","phone",...]
+  allowedContacts InvitationContact[] // Contacts that can be downloaded from this invitation
   createdAt      DateTime @default(now())
+}
+
+model InvitationContact {
+  id           String   @id @default(cuid())
+  invitationId String
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  contactId    String
+  contact      Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([invitationId, contactId])
+  @@index([invitationId])
+  @@index([contactId])
 }
 
 model Contact {
@@ -93,6 +107,7 @@ model Contact {
   
   groupId        String
   group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitations    InvitationContact[] // Invitations this contact can be downloaded from
   createdAt      DateTime @default(now())
 
   @@index([groupId])

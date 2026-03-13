@@ -61,7 +61,7 @@ export class GroupsService {
   async createInvitation(userId: string, groupId: string, dto?: CreateInvitationDto) {
     await this.getGroupWithAccessCheck(userId, groupId);
 
-    const slug = generateInviteSlug();
+    const slug =  generateInviteSlug();
     const data: any = { groupId, slug };
 
     if (dto?.allowDownload !== undefined) {
@@ -80,9 +80,34 @@ export class GroupsService {
       data.requiredFields = 'firstName,lastName,phone';
     }
 
+    // Create invitation with allowed contacts if specified
     const invitation = await this.prisma.invitation.create({
       data,
     });
+
+    // Associate allowed contacts if provided
+    if (dto?.allowedContactIds && Array.isArray(dto.allowedContactIds) && dto.allowedContactIds.length > 0) {
+      // Verify all contacts belong to this group
+      const existingContacts = await this.prisma.contact.findMany({
+        where: {
+          id: { in: dto.allowedContactIds },
+          groupId,
+        },
+        select: { id: true },
+      });
+
+      if (existingContacts.length !== dto.allowedContactIds.length) {
+        throw new ForbiddenException('Some contacts do not belong to this group');
+      }
+
+      // Create associations
+      await this.prisma.invitationContact.createMany({
+        data: dto.allowedContactIds.map(contactId => ({
+          invitationId: invitation.id,
+          contactId,
+        })),
+      });
+    }
 
     return {
       id: invitation.id,
@@ -149,12 +174,74 @@ export class GroupsService {
       data,
     });
 
+    // Handle allowed contacts update
+    if (dto?.allowedContactIds !== undefined) {
+      // Delete existing associations
+      await this.prisma.invitationContact.deleteMany({
+        where: { invitationId },
+      });
+
+      // Create new associations if contacts provided
+      if (Array.isArray(dto.allowedContactIds) && dto.allowedContactIds.length > 0) {
+        // Verify all contacts belong to this group
+        const existingContacts = await this.prisma.contact.findMany({
+          where: {
+            id: { in: dto.allowedContactIds },
+            groupId,
+          },
+          select: { id: true },
+        });
+
+        if (existingContacts.length !== dto.allowedContactIds.length) {
+          throw new ForbiddenException('Some contacts do not belong to this group');
+        }
+
+        // Create new associations
+        await this.prisma.invitationContact.createMany({
+          data: dto.allowedContactIds.map(contactId => ({
+            invitationId,
+            contactId,
+          })),
+        });
+      }
+    }
+
     return {
       ...updated,
       requiredFields: updated.requiredFields
         .split(',')
         .map(f => f.trim())
         .filter(f => f.length > 0),
+    };
+  }
+
+  async getInvitationDetail(userId: string, groupId: string, invitationId: string) {
+    await this.getGroupWithAccessCheck(userId, groupId);
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { id: invitationId, groupId },
+      include: {
+        allowedContacts: {
+          select: { contactId: true },
+        },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    return {
+      id: invitation.id,
+      slug: invitation.slug,
+      allowDownload: invitation.allowDownload,
+      expiresAt: invitation.expiresAt,
+      requiredFields: invitation.requiredFields
+        .split(',')
+        .map(f => f.trim())
+        .filter(f => f.length > 0),
+      allowedContactIds: invitation.allowedContacts.map(ac => ac.contactId),
+      createdAt: invitation.createdAt,
     };
   }
 

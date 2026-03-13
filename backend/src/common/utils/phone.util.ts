@@ -19,13 +19,20 @@ export interface ParsedPhoneResult {
  */
 export function parseAndValidatePhone(phone: string, defaultCountry: string = 'BJ'): ParsedPhoneResult {
   try {
-    // Remove spaces and extra characters but keep +
-    const cleaned = phone.replace(/\s/g, '').trim();
+    // Remove all spaces, dashes, parentheses, and other formatting
+    const cleaned = phone.replace(/[\s\-\(\)\.]/g, '').trim();
+
+    // If it doesn't start with +, try adding country code
+    let phoneToValidate = cleaned;
+    if (!cleaned.startsWith('+')) {
+      const countryDialCode = getCountryDialCode(defaultCountry);
+      phoneToValidate = countryDialCode + cleaned;
+    }
 
     // Try to parse with default country
-    const parsed = parsePhoneNumber(cleaned, defaultCountry as CountryCode);
+    const parsed = parsePhoneNumber(phoneToValidate, defaultCountry as CountryCode);
 
-    if (!parsed || !isValidPhoneNumber(cleaned, defaultCountry as CountryCode)) {
+    if (!parsed) {
       return {
         phone: '',
         countryCode: getCountryCodeFromRegion(defaultCountry),
@@ -34,11 +41,36 @@ export function parseAndValidatePhone(phone: string, defaultCountry: string = 'B
       };
     }
 
-    // Get E.164 format (e.g., +22901968118159)
+    // Special handling for Benin: accept both formats (with/without 01)
+    // For other countries, use strict validation
+    if (String(parsed.countryCallingCode) !== '229' && !parsed.isValid()) {
+      return {
+        phone: '',
+        countryCode: getCountryCodeFromRegion(defaultCountry),
+        isValid: false,
+        error: `Invalid phone number for ${defaultCountry}`,
+      };
+    }
+
+    // For Benin, do a more lenient check (just ensure it parsed and has reasonable length)
+    if (String(parsed.countryCallingCode) === '229') {
+      const phoneE164 = parsed.format('E.164');
+      // Benin numbers: +229 (3) + 8 digits = 11 chars total minimum
+      if (!phoneE164 || phoneE164.length < 11 || phoneE164.length > 13) {
+        return {
+          phone: '',
+          countryCode: getCountryCodeFromRegion(defaultCountry),
+          isValid: false,
+          error: 'Invalid Benin phone number length',
+        };
+      }
+    }
+
+    // Get E.164 format (e.g., +22901968118159 or +22997555338)
     const phoneE164 = parsed.format('E.164');
     const countryCode = '+' + parsed.countryCallingCode;
 
-    // Handle Benin special case: create alternate without '01'
+    // Handle Benin special case: create alternate with/without '01' prefix
     let alternatePhone: string | null = null;
     if (String(parsed.countryCallingCode) === '229') {
       alternatePhone = generateBeninAlternate(phoneE164);
@@ -82,10 +114,10 @@ function generateBeninAlternate(phoneE164: string): string | null {
 }
 
 /**
- * Get country code from region (ISO 3166-1 alpha-2)
- * e.g., 'BJ' -> '+229', 'FR' -> '+33'
+ * Get country calling code from region (the numeric part like 229, 33, 1, etc.)
+ * e.g., 'BJ' -> '229', 'FR' -> '33'
  */
-function getCountryCodeFromRegion(region: string): string {
+function getCountryDialCode(region: string): string {
   const regionCodeMap: { [key: string]: string } = {
     'BJ': '+229', // Benin
     'FR': '+33',  // France
@@ -110,6 +142,14 @@ function getCountryCodeFromRegion(region: string): string {
   };
 
   return regionCodeMap[region.toUpperCase()] || '+' + region;
+}
+
+/**
+ * Get country code from region (ISO 3166-1 alpha-2)
+ * e.g., 'BJ' -> '+229', 'FR' -> '+33'
+ */
+function getCountryCodeFromRegion(region: string): string {
+  return getCountryDialCode(region);
 }
 
 /**

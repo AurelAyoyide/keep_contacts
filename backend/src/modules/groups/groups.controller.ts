@@ -48,6 +48,15 @@ export class GroupsController {
     return this.groupsService.listInvitations(user.userId, id);
   }
 
+  @Get(':groupId/invitation/:invitationId')
+  getInvitationDetail(
+    @CurrentUser() user: CurrentUserData,
+    @Param('groupId') groupId: string,
+    @Param('invitationId') invitationId: string,
+  ) {
+    return this.groupsService.getInvitationDetail(user.userId, groupId, invitationId);
+  }
+
   @Patch(':groupId/invitation/:invitationId')
   updateInvitation(
     @CurrentUser() user: CurrentUserData,

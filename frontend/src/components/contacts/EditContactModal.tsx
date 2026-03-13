@@ -118,7 +118,7 @@ export function EditContactModal({ isOpen, onClose, contact, groupId }: EditCont
                     <PhoneInput
                         label="Numéro de téléphone"
                         countryCode={countryCode}
-                        phoneNumber={phone}
+                        phoneNumber={phone ?? ''}
                         onCountryChange={setCountryCode}
                         onPhoneChange={setPhone}
                     />

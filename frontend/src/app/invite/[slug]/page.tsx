@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { PhoneInput } from '@/components/ui/PhoneInput';
-import { CheckCircle, Users, Building2 } from 'lucide-react';
+import { CheckCircle, Users, Building2, Download } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { InvitationInfo } from '@/types';
@@ -19,6 +19,8 @@ export default function InvitationPage() {
     const [submitted, setSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [downloadableContacts, setDownloadableContacts] = useState<any[]>([]);
+    const [isLoadingContacts, setIsLoadingContacts] = useState(false);
 
     // Form state
     const [firstName, setFirstName] = useState('');
@@ -128,7 +130,27 @@ export default function InvitationPage() {
         setCity('');
         setCountry('');
         setCountryCode('BJ');
+        setDownloadableContacts([]);
     };
+
+    const loadDownloadableContacts = async () => {
+        setIsLoadingContacts(true);
+        try {
+            const { data } = await api.get(`/export/invitation/${slug}/contacts`);
+            setDownloadableContacts(data.contacts || []);
+        } catch (err: any) {
+            console.error('Failed to load downloadable contacts:', err);
+            setDownloadableContacts([]);
+        } finally {
+            setIsLoadingContacts(false);
+        }
+    };
+
+    useEffect(() => {
+        if (submitted && downloadableContacts.length === 0 && !isLoadingContacts) {
+            loadDownloadableContacts();
+        }
+    }, [submitted]);
 
     if (isLoading) {
         return (
@@ -157,21 +179,89 @@ export default function InvitationPage() {
     if (submitted) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900 p-4">
-                <Card className="max-w-md w-full p-8 text-center animate-in zoom-in-95 duration-300">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
-                        <CheckCircle className="h-8 w-8 text-green-600" />
+                <div className="w-full max-w-2xl space-y-6">
+                    {/* Success Message */}
+                    <Card className="p-8 text-center animate-in zoom-in-95 duration-300">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
+                            <CheckCircle className="h-8 w-8 text-green-600" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-foreground mb-2">Thank You!</h2>
+                        <p className="text-muted-foreground mb-8">
+                            Your contact information has been securely received by <strong>{info.groupName}</strong>.
+                        </p>
+                    </Card>
+
+                    {/* Downloadable Contacts Section */}
+                    {info.allowDownload && (
+                        <Card className="p-6 space-y-4">
+                            <h3 className="text-lg font-semibold text-foreground">Download Contacts</h3>
+                            
+                            {isLoadingContacts ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Spinner size="lg" />
+                                </div>
+                            ) : downloadableContacts.length > 0 ? (
+                                <>
+                                    {/* Download All Button */}
+                                    <div className="pb-4 border-b">
+                                        <Button 
+                                            className="w-full" 
+                                            onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, '_blank')}
+                                        >
+                                            Download All Contacts
+                                        </Button>
+                                    </div>
+
+                                    {/* Individual Contacts List */}
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {downloadableContacts.map((contact) => (
+                                            <div 
+                                                key={contact.id} 
+                                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                                            >
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-foreground truncate">
+                                                        {contact.name}
+                                                    </p>
+                                                    <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                                                        {contact.phone && (
+                                                            <span className="truncate">{contact.phone}</span>
+                                                        )}
+                                                        {contact.email && (
+                                                            <span className="truncate">{contact.email}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="ml-2 flex-shrink-0"
+                                                    onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/contact/${contact.id}/vcf`, '_blank')}
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-sm text-muted-foreground py-4">
+                                    No contacts available for download.
+                                </p>
+                            )}
+                        </Card>
+                    )}
+
+                    {/* Footer */}
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground text-center">
+                            Your data is securely stored and only accessible by the organization admins.
+                        </p>
+                        <Button variant="outline" className="w-full" onClick={handleReset}>
+                            Submit another response
+                        </Button>
                     </div>
-                    <h2 className="text-2xl font-bold text-foreground mb-2">Thank You!</h2>
-                    <p className="text-muted-foreground mb-8">
-                        Your contact information has been securely received by <strong>{info.groupName}</strong>.
-                    </p>
-                    <p className="text-sm text-muted-foreground mb-6">
-                        Powered by Keep Contacts
-                    </p>
-                    <Button variant="outline" onClick={handleReset}>
-                        Submit another response
-                    </Button>
-                </Card>
+                </div>
             </div>
         );
     }

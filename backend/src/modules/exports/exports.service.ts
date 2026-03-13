@@ -162,8 +162,20 @@ export class ExportsService {
       throw new ForbiddenException('Telechargement desactive pour cette invitation');
     }
 
+    // Check if this invitation has specific allowed contacts
+    const allowedContactIds = await this.prisma.invitationContact.findMany({
+      where: { invitationId: invitation.id },
+      select: { contactId: true },
+    });
+
+    // Build where clause: if specific contacts allowed, filter; otherwise fetch all
+    const where: any = { groupId: invitation.groupId };
+    if (allowedContactIds.length > 0) {
+      where.id = { in: allowedContactIds.map(ic => ic.contactId) };
+    }
+
     const contacts = await this.prisma.contact.findMany({
-      where: { groupId: invitation.groupId },
+      where,
       orderBy: { lastName: 'asc' },
     });
 
@@ -179,6 +191,118 @@ export class ExportsService {
       .join('\n');
     return {
       filename: `${invitation.group.slug}-contacts.vcf`,
+      content,
+      contentType: 'text/vcard',
+    };
+  }
+
+  async getDownloadableContactsByInvitation(slug: string) {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { slug },
+      include: { group: true },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation introuvable');
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      throw new ForbiddenException('Invitation expiree');
+    }
+
+    if (!invitation.allowDownload) {
+      throw new ForbiddenException('Telechargement desactive pour cette invitation');
+    }
+
+    // Check if this invitation has specific allowed contacts
+    const allowedContactIds = await this.prisma.invitationContact.findMany({
+      where: { invitationId: invitation.id },
+      select: { contactId: true },
+    });
+
+    // Build where clause: if specific contacts allowed, filter; otherwise fetch all
+    const where: any = { groupId: invitation.groupId };
+    if (allowedContactIds.length > 0) {
+      where.id = { in: allowedContactIds.map(ic => ic.contactId) };
+    }
+
+    const contacts = await this.prisma.contact.findMany({
+      where,
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
+      },
+    });
+
+    return {
+      slug,
+      groupId: invitation.groupId,
+      groupSlug: invitation.group.slug,
+      hasRestriction: allowedContactIds.length > 0,
+      contactCount: contacts.length,
+      contacts: contacts.map(c => ({
+        id: c.id,
+        name: `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown',
+        phone: c.phone || null,
+        email: c.email || null,
+      })),
+    };
+  }
+
+  async exportSingleContactByInvitationSlug(slug: string, contactId: string) {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { slug },
+      include: { group: { include: { organization: true } } },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation introuvable');
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      throw new ForbiddenException('Invitation expiree');
+    }
+
+    if (!invitation.allowDownload) {
+      throw new ForbiddenException('Telechargement desactive pour cette invitation');
+    }
+
+    // Check if this invitation has specific allowed contacts
+    const allowedContactIds = await this.prisma.invitationContact.findMany({
+      where: { invitationId: invitation.id },
+      select: { contactId: true },
+    });
+
+    // If there are allowed contacts, verify the requested contact is in the list
+    if (allowedContactIds.length > 0) {
+      const isAllowed = allowedContactIds.some(ic => ic.contactId === contactId);
+      if (!isAllowed) {
+        throw new ForbiddenException('Ce contact n\'est pas autorise pour cette invitation');
+      }
+    }
+
+    // Fetch the single contact
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: contactId, groupId: invitation.groupId },
+    });
+
+    if (!contact) {
+      throw new NotFoundException('Contact introuvable');
+    }
+
+    // Generate VCF for single contact
+    const content = this.generateVcard(
+      contact,
+      invitation.group.organization.autoTag,
+      invitation.group.organization.tagEnabled,
+    );
+
+    return {
+      filename: `${contact.firstName || ''}_${contact.lastName || contact.id}.vcf`,
       content,
       contentType: 'text/vcard',
     };

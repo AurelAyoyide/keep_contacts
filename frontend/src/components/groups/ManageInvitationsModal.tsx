@@ -231,6 +231,11 @@ export function ManageInvitationsModal({ isOpen, onClose, groupId }: ManageInvit
                                                 <span className="text-red-600">✗ Download disabled</span>
                                             )}
                                         </div>
+                                        {inv.allowDownload && (
+                                            <div className="text-blue-600">
+                                                💡 Contact selection available (use GenerateInvitationButton to edit)
+                                            </div>
+                                        )}
                                         {inv.expiresAt && !inv.isExpired && (
                                             <div>
                                                 Expires: {new Date(inv.expiresAt).toLocaleDateString()}

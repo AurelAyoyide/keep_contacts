@@ -65,9 +65,27 @@ export class ExportsController {
     res.send(content);
   }
 
+  @Get('export/invitation/:slug/contacts')
+  async getInvitationContacts(@Param('slug') slug: string) {
+    return this.exportsService.getDownloadableContactsByInvitation(slug);
+  }
+
   @Get('export/invitation/:slug/vcf')
   async exportInvitationVcf(@Param('slug') slug: string, @Res() res: Response) {
     const { filename, content } = await this.exportsService.exportByInvitationSlug(slug);
+
+    res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+  }
+
+  @Get('export/invitation/:slug/contact/:contactId/vcf')
+  async exportInvitationContactVcf(
+    @Param('slug') slug: string,
+    @Param('contactId') contactId: string,
+    @Res() res: Response,
+  ) {
+    const { filename, content } = await this.exportsService.exportSingleContactByInvitationSlug(slug, contactId);
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

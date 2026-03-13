@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
 import { useGlobalToast } from '@/components/ui/Toast';
-import { Link2, Copy, Check } from 'lucide-react';
+import { Link2, Copy, Check, ChevronDown } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
+import { Contact } from '@/types';
 import api from '@/lib/api';
 
 interface GenerateInvitationButtonProps {
@@ -64,8 +66,27 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
     const [allowDownload, setAllowDownload] = useState(true);
     const [expiresInHours, setExpiresInHours] = useState<number | ''>('');
     const [requiredFields, setRequiredFields] = useState<string[]>(['firstName', 'lastName', 'phone']);
-    const [currentInvitationData, setCurrentInvitationData] = useState<{requiredFields: string[], allowDownload: boolean} | null>(null);
+    const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+    const [showContactSelector, setShowContactSelector] = useState(false);
+    const [currentInvitationData, setCurrentInvitationData] = useState<{requiredFields: string[], allowDownload: boolean, allowedContactIds?: string[]} | null>(null);
     const { success, error } = useGlobalToast();
+
+    // Fetch contacts for the group
+    const { data: contacts, isLoading: isLoadingContacts } = useQuery({
+        queryKey: ['contacts', groupId],
+        queryFn: async () => {
+            const { data } = await api.get<Contact[]>(`/groups/${groupId}/contacts`);
+            return data;
+        },
+    });
+
+    const handleContactToggle = (contactId: string) => {
+        setSelectedContactIds((prev) =>
+            prev.includes(contactId)
+                ? prev.filter((id) => id !== contactId)
+                : [...prev, contactId]
+        );
+    };
 
     const handleFieldToggle = (fieldId: string) => {
         setRequiredFields((prev) =>
@@ -83,17 +104,25 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
 
         setIsLoading(true);
         try {
-            const { data } = await api.post(`/groups/${groupId}/invitation`, {
+            const payload: any = {
                 allowDownload,
                 expiresInHours: expiresInHours ? parseInt(String(expiresInHours)) : undefined,
                 requiredFields,
-            });
+            };
+
+            // Include allowed contact IDs if download is enabled and contacts are selected
+            if (allowDownload && selectedContactIds.length > 0) {
+                payload.allowedContactIds = selectedContactIds;
+            }
+
+            const { data } = await api.post(`/groups/${groupId}/invitation`, payload);
             setSlug(data.slug);
             setInvitationId(data.id);
             // Store the data we just created so we can use it in edit mode
             setCurrentInvitationData({
                 requiredFields,
                 allowDownload,
+                allowedContactIds: selectedContactIds,
             });
             success('Invitation link generated!');
             setIsModalOpen(false);
@@ -116,13 +145,21 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
 
         setIsLoading(true);
         try {
-            await api.patch(`/groups/${groupId}/invitation/${invitationId}`, {
+            const payload: any = {
                 requiredFields,
-            });
+            };
+
+            // Include allowed contact IDs if download is enabled and contacts are selected
+            if (allowDownload && selectedContactIds.length > 0) {
+                payload.allowedContactIds = selectedContactIds;
+            }
+
+            await api.patch(`/groups/${groupId}/invitation/${invitationId}`, payload);
             // Update cached data
             setCurrentInvitationData({
                 requiredFields,
-                allowDownload: allowDownload !== false,
+                allowDownload,
+                allowedContactIds: selectedContactIds,
             });
             success('Invitation updated!');
             setIsEditMode(false);
@@ -140,32 +177,42 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
         if (currentInvitationData) {
             setRequiredFields(currentInvitationData.requiredFields);
             setAllowDownload(currentInvitationData.allowDownload);
+            setSelectedContactIds(currentInvitationData.allowedContactIds || []);
             return;
         }
 
-        // Otherwise, fetch from server
+        // Otherwise, fetch from server (including allowedContactIds)
         setIsFetchingData(true);
         try {
-            const { data: invitations } = await api.get(`/groups/${groupId}/invitations`);
-            const currentInv = invitations.find((inv: any) => inv.id === invId);
+            const { data: invitationDetail } = await api.get(`/groups/${groupId}/invitation/${invId}`);
             
-            if (currentInv) {
-                console.log('Loaded invitation data:', currentInv);
-                // Parse requiredFields if it's a string
-                let fields = currentInv.requiredFields;
+            if (invitationDetail) {
+                console.log('Loaded invitation detail:', invitationDetail);
+                
+                // Parse requiredFields
+                let fields = invitationDetail.requiredFields;
                 if (typeof fields === 'string') {
                     fields = fields.split(',').map((f: string) => f.trim()).filter((f: string) => f.length > 0);
+                } else if (!Array.isArray(fields)) {
+                    fields = ['firstName', 'lastName', 'phone'];
                 }
-                const fieldsArray = fields || ['firstName', 'lastName', 'phone'];
+                
+                const fieldsArray = Array.isArray(fields) ? fields : ['firstName', 'lastName', 'phone'];
                 setRequiredFields(fieldsArray);
-                setAllowDownload(currentInv.allowDownload !== false);
+                setAllowDownload(invitationDetail.allowDownload !== false);
+                
+                // Load allowed contact IDs
+                const allowedIds = invitationDetail.allowedContactIds || [];
+                setSelectedContactIds(allowedIds);
+                
                 // Cache the data
                 setCurrentInvitationData({
                     requiredFields: fieldsArray,
-                    allowDownload: currentInv.allowDownload !== false,
+                    allowDownload: invitationDetail.allowDownload !== false,
+                    allowedContactIds: allowedIds,
                 });
             } else {
-                console.warn('Invitation not found in list:', invId);
+                console.warn('Invitation not found:', invId);
                 error('Invitation not found');
             }
         } catch (err: any) {
@@ -230,6 +277,7 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                         setRequiredFields(['firstName', 'lastName', 'phone']);
                         setAllowDownload(true);
                         setExpiresInHours('');
+                        setSelectedContactIds([]);
                     }}
                     title={isEditMode ? "Edit Required Fields" : "Configure Invitation Link"}
                 >
@@ -308,6 +356,64 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                             </>
                         )}
 
+                        {/* Contact Selection - Show in both creation and edit mode when download is enabled */}
+                        {allowDownload && (
+                            <div>
+                                <label className="block text-sm font-medium mb-2">
+                                    Which contacts should be downloadable?
+                                </label>
+                                <div className="border rounded-lg bg-muted/30 p-3 max-h-48 overflow-y-auto space-y-2">
+                                    {isLoadingContacts ? (
+                                        <p className="text-xs text-muted-foreground py-2">Loading contacts...</p>
+                                    ) : contacts && contacts.length > 0 ? (
+                                        <>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="selectAll"
+                                                    checked={selectedContactIds.length === contacts.length && selectedContactIds.length > 0}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedContactIds(contacts.map(c => c.id));
+                                                        } else {
+                                                            setSelectedContactIds([]);
+                                                        }
+                                                    }}
+                                                    className="rounded border-gray-300"
+                                                />
+                                                <label htmlFor="selectAll" className="text-sm font-medium cursor-pointer">
+                                                    Select All
+                                                </label>
+                                            </div>
+                                            <div className="border-t pt-2">
+                                                {contacts.map((contact) => (
+                                                    <div key={contact.id} className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`contact-${contact.id}`}
+                                                            checked={selectedContactIds.includes(contact.id)}
+                                                            onChange={() => handleContactToggle(contact.id)}
+                                                            className="rounded border-gray-300"
+                                                        />
+                                                        <label htmlFor={`contact-${contact.id}`} className="text-sm cursor-pointer flex-1">
+                                                            {`${contact.firstName || ''} ${contact.lastName || ''}`.trim() || '-'}
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground py-2">No contacts available</p>
+                                    )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    {selectedContactIds.length > 0 
+                                        ? `${selectedContactIds.length} contact${selectedContactIds.length === 1 ? '' : 's'} selected` 
+                                        : 'All contacts will be downloadable (leave empty)'}
+                                </p>
+                            </div>
+                        )}
+
                         <div className="flex justify-end space-x-2 pt-4 border-t">
                             <Button 
                                 type="button" 
@@ -315,6 +421,7 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                                 onClick={() => {
                                     setIsModalOpen(false);
                                     setIsEditMode(false);
+                                    setSelectedContactIds([]);
                                 }} 
                                 disabled={isLoading}
                             >
@@ -355,6 +462,7 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                     setRequiredFields(['firstName', 'lastName', 'phone']);
                     setAllowDownload(true);
                     setExpiresInHours('');
+                    setSelectedContactIds([]);
                 }}
                 title={isEditMode ? "Edit Required Fields" : "Configure Invitation Link"}
             >
@@ -403,12 +511,12 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                             <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
-                                    id="allowDownload"
+                                    id="allowDownload2"
                                     checked={allowDownload}
                                     onChange={(e) => setAllowDownload(e.target.checked)}
                                     className="rounded border-gray-300"
                                 />
-                                <label htmlFor="allowDownload" className="text-sm font-medium cursor-pointer">
+                                <label htmlFor="allowDownload2" className="text-sm font-medium cursor-pointer">
                                     Allow users to download contacts (VCF)
                                 </label>
                             </div>
@@ -440,6 +548,7 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                             onClick={() => {
                                 setIsModalOpen(false);
                                 setIsEditMode(false);
+                                setSelectedContactIds([]);
                             }} 
                             disabled={isLoading}
                         >
