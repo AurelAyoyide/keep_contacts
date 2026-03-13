@@ -8,11 +8,23 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Security headers
-  app.use(helmet());
+  const isDev = process.env.NODE_ENV !== 'production';
 
+  // Security headers — relax cross-origin policies in dev to allow phone access
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: isDev ? false : { policy: 'same-origin' },
+      crossOriginOpenerPolicy: isDev ? false : { policy: 'same-origin' },
+      crossOriginEmbedderPolicy: false, // Keep false: breaks some APIs otherwise
+    }),
+  );
+
+  // CORS: in dev, allow any origin so the local network phone can connect
+  const frontendUrl = process.env.FRONTEND_URL;
   app.enableCors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: isDev
+      ? true // allow all origins in development
+      : frontendUrl || false,
     credentials: true,
     exposedHeaders: ['Content-Disposition'],
   });
