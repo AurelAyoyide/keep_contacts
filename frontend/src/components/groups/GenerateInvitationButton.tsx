@@ -110,8 +110,9 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                 requiredFields,
             };
 
-            // Include allowed contact IDs if download is enabled and contacts are selected
-            if (allowDownload && selectedContactIds.length > 0) {
+            // Always include allowed contact IDs if download is enabled
+            // This allows the backend to properly update/clear InvitationContact associations
+            if (allowDownload) {
                 payload.allowedContactIds = selectedContactIds;
             }
 
@@ -147,10 +148,12 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
         try {
             const payload: any = {
                 requiredFields,
+                allowDownload,
             };
 
-            // Include allowed contact IDs if download is enabled and contacts are selected
-            if (allowDownload && selectedContactIds.length > 0) {
+            // Always include allowed contact IDs if download is enabled
+            // This allows the backend to properly update/clear InvitationContact associations
+            if (allowDownload) {
                 payload.allowedContactIds = selectedContactIds;
             }
 
