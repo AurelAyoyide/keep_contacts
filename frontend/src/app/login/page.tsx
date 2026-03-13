@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { useGlobalToast } from '@/components/ui/Toast';
-import { Mail, Lock, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function LoginPage() {
@@ -16,45 +15,54 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
-    const { error } = useGlobalToast();
-    const router = useRouter();
+    const { success, error } = useGlobalToast();
+
+    const [showResend, setShowResend] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setShowResend(false);
 
         try {
             const { data } = await api.post('/auth/login', { email, password });
-            // Expecting { user: {...}, token: '...' } or similar. 
-            // Based on typical NestJS passport-jwt, it might be { access_token: '...' }
-            // I need to be sure about the response structure. 
-            // Let's assume standard { accessToken: '...' } or verify. 
-            // The backend README says:
-            // POST /auth/login -> Connexion
 
-            // If the backend returns just the token, I might need to fetch user profile or it returns both.
-            // Usually NestJS example returns { access_token: string }
+            const accessToken = data.accessToken;
+            const refreshToken = data.refreshToken;
 
-            const token = data.access_token || data.token;
-
-            if (!token) {
+            if (!accessToken || !refreshToken) {
                 throw new Error('No token received');
             }
 
-            // If useAuth requires user object immediately, I might need to decode token or fetch me.
-            // The AuthContext I wrote fetches /auth/me on mount if token exists.
-            // But for fast transition, I should probably fetch me here or let the dashboard do it?
-            // AuthProvider.login takes (token, user).
+            // Fetch user details immediately to populate context
+            api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
-            // Let's fetch user details
-            api.defaults.headers.Authorization = `Bearer ${token}`; // Set temporarily
-            const userResponse = await api.get('/auth/me');
+            // To fetch me, we manually pass the auth header since the interceptor relies on localStorage
+            const userResponse = await api.get('/auth/me', {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
 
-            login(token, userResponse.data);
+            login(accessToken, refreshToken, userResponse.data);
         } catch (err: any) {
             console.error(err);
-            error(err.response?.data?.message || 'Invalid credentials');
+            const msg = err.response?.data?.message || 'Invalid credentials';
+            error(msg.toString());
+
+            // If the user needs to verify their email
+            if (msg.includes('vérifier') || msg.includes('verify')) {
+                setShowResend(true);
+            }
+
             setIsLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        try {
+            const res = await api.post('/auth/resend-verification', { email });
+            success(res.data.message || 'Email de vérification renvoyé avec succès');
+        } catch (err: any) {
+            error(err.response?.data?.message || 'Failed to resend email');
         }
     };
 
@@ -91,9 +99,26 @@ export default function LoginPage() {
                             leftIcon={<Lock className="h-4 w-4" />}
                         />
 
+                        <div className="flex items-center justify-between mt-2">
+                            <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+                                Forgot password?
+                            </Link>
+                        </div>
+
                         <Button type="submit" className="w-full" isLoading={isLoading}>
                             Sign In
                         </Button>
+
+                        {showResend && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full mt-2"
+                                onClick={handleResendVerification}
+                            >
+                                Resend verification email
+                            </Button>
+                        )}
                     </form>
 
                     <div className="mt-6 text-center text-sm">

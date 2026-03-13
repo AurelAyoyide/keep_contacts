@@ -12,7 +12,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    login: (token: string, user: User) => void;
+    login: (accessToken: string, refreshToken: string, user: User) => void;
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -27,14 +27,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Check for token on mount
         const checkAuth = async () => {
-            const token = localStorage.getItem('token');
+            const token = localStorage.getItem('accessToken');
             if (token) {
                 try {
                     const { data } = await api.get('/auth/me');
                     setUser(data);
                 } catch (error) {
                     console.error('Auth check failed:', error);
-                    localStorage.removeItem('token');
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
                 }
             }
             setLoading(false);
@@ -43,16 +44,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth();
     }, []);
 
-    const login = (token: string, userData: User) => {
-        localStorage.setItem('token', token);
+    const login = (accessToken: string, refreshToken: string, userData: User) => {
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
         setUser(userData);
         router.push('/dashboard');
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
-        router.push('/login');
+    const logout = async () => {
+        try {
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (refreshToken) {
+                await api.post('/auth/logout', { refreshToken });
+            }
+        } catch (error) {
+            console.error('Logout failed:', error);
+        } finally {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            setUser(null);
+            router.push('/login');
+            // Hard reload is recommended occasionally to clean up memory/interceptors state
+        }
     };
 
     return (

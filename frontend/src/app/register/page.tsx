@@ -26,16 +26,16 @@ export default function RegisterPage() {
             return;
         }
 
-        if (password.length < 6) {
-            error('Password must be at least 6 characters');
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)) {
+            error('Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre');
             return;
         }
 
         setIsLoading(true);
 
         try {
-            await api.post('/auth/register', { email, password });
-            success('Account created successfully! Please log in.');
+            const res = await api.post('/auth/register', { email, password });
+            success(res.data.message || 'Compte créé ! Veuillez vérifier votre email.');
             router.push('/login');
         } catch (err: any) {
             console.error(err);
