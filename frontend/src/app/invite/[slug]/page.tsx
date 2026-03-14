@@ -18,13 +18,35 @@ import { InvitationInfo } from '@/types';
  * the OS intercepts it and opens the native Contacts app directly (1-click save).
  * On desktop, trigger a normal file download.
  */
-function openVcf(url: string, isSingleContact: boolean = false) {
+async function openVcf(url: string, isSingleContact: boolean = false) {
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
         typeof navigator !== 'undefined' ? navigator.userAgent : ''
     );
 
-    // On mobile (Android/iOS), we use a direct link to let the browser handle the vCard preview.
-    // With vCard 4.0, iOS should handle the multiple contacts import better in the previewer.
+    if (isMobile && typeof navigator !== 'undefined' && (navigator as any).share) {
+        try {
+            // Fetch the vCard data
+            const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'inline=true');
+            const blob = await response.blob();
+
+            // Create a File object that the Share API can use
+            const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
+
+            // Re-check shareability of files (some browsers share text but not files)
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Contacts',
+                    text: 'Add these contacts to your phone'
+                });
+                return; // Shared successfully
+            }
+        } catch (err) {
+            console.error('Share failed, falling back to direct link', err);
+        }
+    }
+
+    // Fallback/Default behavior
     if (isMobile) {
         // Use inline=true to avoid attachment header and trigger browser's native contact preview
         window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';

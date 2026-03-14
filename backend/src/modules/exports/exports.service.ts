@@ -114,10 +114,10 @@ export class ExportsService {
           exportToken.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n\r\n');
+      .join('\r\n'); // Strictly follow RFC6350/vCard for separators
     return {
       filename: `${exportToken.group.slug}-contacts.vcf`,
-      content: content + '\r\n',
+      content, // Trailing CRLF is already in generated lines join
       contentType: 'text/vcard',
     };
   }
@@ -139,9 +139,9 @@ export class ExportsService {
           c.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n\r\n');
+      .join('\r\n');
 
-    return { filename: `${group.slug}-contacts.vcf`, content: content + '\r\n' };
+    return { filename: `${group.slug}-contacts.vcf`, content };
   }
 
   async exportByInvitationSlug(slug: string) {
@@ -188,10 +188,10 @@ export class ExportsService {
           invitation.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n\r\n');
+      .join('\r\n');
     return {
       filename: `${invitation.group.slug}-contacts.vcf`,
-      content: content + '\r\n',
+      content,
       contentType: 'text/vcard',
     };
   }
@@ -354,28 +354,24 @@ export class ExportsService {
 
     const lines = [
       'BEGIN:VCARD',
-      'VERSION:4.0',
+      'VERSION:3.0',
       'PRODID:-//KeepContacts//BulkImport 1.0//EN',
-      'KIND:individual',
       `UID:urn:uuid:${contact.id}`,
-      `N:${ln};${fn};;;`,
+      `N:${ln};${fn};;;${tagSuffix}`,
       `FN:${displayName}`,
       `REV:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
     ];
 
     if (contact.phone) {
-      // For vCard 4.0, TEL values can be URIs
-      const cleanPhone = contact.phone.replace(/\s+/g, '');
-      lines.push(`TEL;TYPE=cell,voice,text;VALUE=uri:tel:${cleanPhone}`);
+      lines.push(`TEL;TYPE=CELL,VOICE:${contact.phone}`);
     }
 
     if (contact.alternatePhone) {
-      const cleanPhone = contact.alternatePhone.replace(/\s+/g, '');
-      lines.push(`TEL;TYPE=home,voice;VALUE=uri:tel:${cleanPhone}`);
+      lines.push(`TEL;TYPE=HOME,VOICE:${contact.alternatePhone}`);
     }
 
     if (contact.email) {
-      lines.push(`EMAIL;TYPE=internet,home:${contact.email}`);
+      lines.push(`EMAIL;TYPE=INTERNET,HOME:${contact.email}`);
     }
 
     if (contact.dateOfBirth) {
@@ -383,7 +379,7 @@ export class ExportsService {
       const year = bday.getFullYear();
       const month = String(bday.getMonth() + 1).padStart(2, '0');
       const day = String(bday.getDate()).padStart(2, '0');
-      lines.push(`BDAY:${year}${month}${day}`); // vCard 4.0 prefers CCYYMMDD
+      lines.push(`BDAY:${year}-${month}-${day}`);
     }
 
     if (contact.nickname) {
@@ -399,11 +395,12 @@ export class ExportsService {
 
     if (contact.address || contact.city || contact.country) {
       const adr = `;;${contact.address || ''};${contact.city || ''};;${contact.country || ''}`;
-      lines.push(`ADR;TYPE=home:${adr}`);
+      lines.push(`ADR;TYPE=HOME:${adr}`);
     }
 
     if (completeTag) {
       lines.push(`CATEGORIES:${completeTag}`);
+      lines.push(`X-ABLabel:${completeTag}`);
     }
 
     lines.push('END:VCARD');

@@ -50,6 +50,25 @@ export default function GroupDetailsPage() {
                 typeof navigator !== 'undefined' ? navigator.userAgent : ''
             );
 
+            if (isMobile && typeof navigator !== 'undefined' && (navigator as any).share) {
+                try {
+                    const response = await fetch(downloadUrl + '&inline=true');
+                    const blob = await response.blob();
+                    const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Contacts Export',
+                        });
+                        setIsDownloading(null);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Dashboard share failed', err);
+                }
+            }
+
             if (isMobile) {
                 // Inline mode for mobile: direct preview in browser
                 window.location.href = downloadUrl + '&inline=true';
