@@ -54,30 +54,22 @@ export default function GroupDetailsPage() {
             );
 
             if (isMobile) {
-                const response = await fetch(downloadUrl + '&inline=true');
-                const vcfText = await response.text();
-
                 if (isIOS) {
-                    const base64 = btoa(unescape(encodeURIComponent(vcfText)));
-                    window.location.href = `data:text/vcard;base64,${base64}`;
-                    setIsDownloading(null);
-                    return;
+                    const response = await fetch(downloadUrl);
+                    const blob = await response.blob();
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = 'contacts.vcf';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                    }, 100);
+                } else {
+                    window.location.href = downloadUrl + '&inline=true';
                 }
-
-                if ((navigator as any).share) {
-                    const blob = new Blob([vcfText], { type: 'text/vcard' });
-                    const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            files: [file],
-                            title: 'Contacts Export',
-                        });
-                        setIsDownloading(null);
-                        return;
-                    }
-                }
-
-                window.location.href = downloadUrl + '&inline=true';
             } else {
                 // Desktop: standard download
                 const a = document.createElement('a');

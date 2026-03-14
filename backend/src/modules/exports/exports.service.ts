@@ -355,8 +355,11 @@ export class ExportsService {
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      `N:${ln};${fn};;;`,
+      'PRODID:-//KeepContacts//BulkImport 1.0//EN',
+      `UID:urn:uuid:${contact.id}`,
+      `N:${ln};${fn};;;${tagSuffix}`,
       `FN:${displayName}`,
+      `REV:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
     ];
 
     if (contact.phone) {
@@ -371,8 +374,9 @@ export class ExportsService {
       lines.push(`EMAIL;TYPE=INTERNET,HOME:${contact.email}`);
     }
 
-    if (contact.organization) {
-      lines.push(`ORG:${contact.organization}`);
+    if (contact.organization || completeTag) {
+      const org = [contact.organization, completeTag].filter(Boolean).join(' - ');
+      lines.push(`ORG:${org}`);
     }
 
     if (contact.jobTitle) {
@@ -380,7 +384,8 @@ export class ExportsService {
     }
 
     if (completeTag) {
-      lines.push(`NOTE:Tagged as ${completeTag}`);
+      lines.push(`CATEGORIES:${completeTag}`);
+      lines.push(`X-ABLabel:${completeTag}`);
     }
 
     lines.push('END:VCARD');

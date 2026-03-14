@@ -27,39 +27,33 @@ async function openVcf(url: string, isSingleContact: boolean = false) {
     );
 
     if (isMobile) {
-        try {
-            // Fetch the vCard data as text
-            const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'inline=true');
-            const vcfText = await response.text();
+        if (isIOS && !isSingleContact) {
+            try {
+                // On iOS, for multiple contacts, we MUST force a download.
+                // Safari's inline previewer is broken for multi-vCard.
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
 
-            if (isIOS) {
-                // SPECIAL iOS TRICK: Opening a Base64 Data URI of type text/vcard 
-                // triggers the native "Add All Contacts" screen directly in Safari/Chrome.
-                const base64 = btoa(unescape(encodeURIComponent(vcfText)));
-                window.location.href = `data:text/vcard;base64,${base64}`;
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = 'contacts.vcf';
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 100);
                 return;
+            } catch (err) {
+                console.error('iOS download failed', err);
             }
-
-            // For Android or if share is supported
-            if ((navigator as any).share) {
-                const blob = new Blob([vcfText], { type: 'text/vcard' });
-                const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Contacts',
-                    });
-                    return;
-                }
-            }
-
-            // Fallback for mobile without share
-            window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
-            return;
-        } catch (err) {
-            console.error('VCF handling failed', err);
         }
+
+        // Default mobile behavior: inline preview (works great on Android and iOS-single)
+        window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
+        return;
     }
 
     // Desktop
