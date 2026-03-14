@@ -8,10 +8,34 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { PhoneInput } from '@/components/ui/PhoneInput';
-import { CheckCircle, Users, Building2, Download } from 'lucide-react';
+import { CheckCircle, Users, Building2, UserPlus, Download } from 'lucide-react';
 import api from '@/lib/api';
 import Link from 'next/link';
 import { InvitationInfo } from '@/types';
+
+/** 
+ * On mobile, serve the VCF without Content-Disposition: attachment so 
+ * the OS intercepts it and opens the native Contacts app directly (1-click save).
+ * On desktop, trigger a normal file download.
+ */
+function openVcf(url: string) {
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    );
+
+    if (isMobile) {
+        // Inline mode: browser/OS handles the vCard natively
+        window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
+    } else {
+        // Desktop: trigger a proper file download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+}
 
 export default function InvitationPage() {
     const params = useParams();
@@ -195,7 +219,7 @@ export default function InvitationPage() {
                     {info.allowDownload && (
                         <Card className="p-6 space-y-4">
                             <h3 className="text-lg font-semibold text-foreground">Download Contacts</h3>
-                            
+
                             {isLoadingContacts ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Spinner size="lg" />
@@ -204,19 +228,20 @@ export default function InvitationPage() {
                                 <>
                                     {/* Download All Button */}
                                     <div className="pb-4 border-b">
-                                        <Button 
-                                            className="w-full" 
-                                            onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, '_blank')}
+                                        <Button
+                                            className="w-full flex items-center gap-2"
+                                            onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`)}
                                         >
-                                            Download All Contacts
+                                            <UserPlus className="h-4 w-4" />
+                                            Save All Contacts
                                         </Button>
                                     </div>
 
                                     {/* Individual Contacts List */}
                                     <div className="space-y-2 max-h-96 overflow-y-auto">
                                         {downloadableContacts.map((contact) => (
-                                            <div 
-                                                key={contact.id} 
+                                            <div
+                                                key={contact.id}
                                                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                                             >
                                                 <div className="flex-1 min-w-0">
@@ -236,9 +261,9 @@ export default function InvitationPage() {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="ml-2 flex-shrink-0"
-                                                    onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/contact/${contact.id}/vcf`, '_blank')}
+                                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/contact/${contact.id}/vcf`)}
                                                 >
-                                                    <Download className="h-4 w-4" />
+                                                    <UserPlus className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         ))}
@@ -438,14 +463,15 @@ export default function InvitationPage() {
 
                         {info.allowDownload && (
                             <div className="text-center pt-4 border-t mt-4">
-                                <p className="text-xs text-muted-foreground mb-3">
-                                    Download the current contact list for this group:
-                                </p>
-                                <div className="flex gap-2 justify-center">
-                                    <Button type="button" variant="outline" size="sm" onClick={() => window.open(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, '_blank')}>
-                                        Download Contacts
-                                    </Button>
-                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full flex items-center gap-2"
+                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`)}
+                                >
+                                    <UserPlus className="h-4 w-4" />
+                                    Save Contacts
+                                </Button>
                             </div>
                         )}
 

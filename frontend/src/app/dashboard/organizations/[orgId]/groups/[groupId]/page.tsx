@@ -38,31 +38,32 @@ export default function GroupDetailsPage() {
     const handleDownload = async (format: 'vcf') => {
         setIsDownloading(format);
         try {
-            const response = await api.get(`/groups/${groupId}/export/${format}`, {
-                responseType: 'blob',
+            // Create a short-lived export token first
+            const { data } = await api.post(`/groups/${groupId}/export/token`, {
+                expiresInHours: 1,
+                format
             });
 
-            // Create blob link to download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
+            const downloadUrl = `${api.defaults.baseURL}/export?token=${data.token}`;
+            
+            const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
+                typeof navigator !== 'undefined' ? navigator.userAgent : ''
+            );
 
-            // Try to extract filename from header
-            const contentDisposition = response.headers['content-disposition'];
-            let filename = `contacts.${format}`;
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch && filenameMatch.length === 2)
-                    filename = filenameMatch[1];
+            if (isMobile) {
+                // Inline mode: browser/OS handles the vCard natively
+                window.location.href = downloadUrl + '&inline=true';
+            } else {
+                // Desktop: trigger a proper file download
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             }
 
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode?.removeChild(link);
-            window.URL.revokeObjectURL(url);
-
-            success(`Download ${format.toUpperCase()} success`);
+            success(`Download ${format.toUpperCase()} initiated`);
         } catch (err: any) {
             console.error('Download error:', err);
             error('Download failed');

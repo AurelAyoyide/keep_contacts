@@ -39,7 +39,11 @@ export class ExportsController {
   }
 
   @Get('export')
-  async publicExport(@Query('token') token: string, @Res() res: Response) {
+  async publicExport(
+    @Query('token') token: string,
+    @Query('inline') inline: string,
+    @Res() res: Response,
+  ) {
     if (!token) {
       throw new ForbiddenException('Token requis');
     }
@@ -47,7 +51,9 @@ export class ExportsController {
     const { filename, content, contentType } = await this.exportsService.exportWithToken(token);
 
     res.setHeader('Content-Type', `${contentType}; charset=utf-8`);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    if (inline !== 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.send(content);
   }
 
@@ -71,11 +77,18 @@ export class ExportsController {
   }
 
   @Get('export/invitation/:slug/vcf')
-  async exportInvitationVcf(@Param('slug') slug: string, @Res() res: Response) {
+  async exportInvitationVcf(
+    @Param('slug') slug: string,
+    @Query('inline') inline: string,
+    @Res() res: Response,
+  ) {
     const { filename, content } = await this.exportsService.exportByInvitationSlug(slug);
 
+    // On mobile, omitting Content-Disposition: attachment triggers the native contacts app
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    if (inline !== 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.send(content);
   }
 
@@ -83,12 +96,15 @@ export class ExportsController {
   async exportInvitationContactVcf(
     @Param('slug') slug: string,
     @Param('contactId') contactId: string,
+    @Query('inline') inline: string,
     @Res() res: Response,
   ) {
     const { filename, content } = await this.exportsService.exportSingleContactByInvitationSlug(slug, contactId);
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    if (inline !== 'true') {
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    }
     res.send(content);
   }
 }
