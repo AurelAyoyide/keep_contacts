@@ -18,7 +18,7 @@ import { InvitationInfo } from '@/types';
  * the OS intercepts it and opens the native Contacts app directly (1-click save).
  * On desktop, trigger a normal file download.
  */
-function openVcf(url: string, isSingleContact: boolean = false) {
+function openVcf(url: string, isSingleContact: boolean = false, toastSuccess?: (msg: string) => void) {
     const isIOS = /iPhone|iPad|iPod/i.test(
         typeof navigator !== 'undefined' ? navigator.userAgent : ''
     );
@@ -27,20 +27,46 @@ function openVcf(url: string, isSingleContact: boolean = false) {
     );
 
     // iOS Safari has a quirk where it only parses the FIRST contact of an inline VCF.
-    // So for multiple contacts on iOS, we MUST trigger a normal file download (attachment).
-    // The user will see a Safari download prompt, tap "Download", then open it in Contacts natively.
+    // So for multiple contacts on iOS, we MUST trigger a normal file download (attachment)
+    // using a Blob to bypass the Apple QuickLook preview which breaks multi-vcards.
     if (isMobile && !(isIOS && !isSingleContact)) {
         // Inline mode: Android, or iOS single contact -> browser/OS handles the vCard natively seamlessly
         window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
     } else {
-        // Desktop OR iOS Multi-contact: trigger a proper file download
-        // Since backend already sends Content-Disposition: attachment, this triggers a solid download.
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Desktop OR iOS Multi-contact:
+        if (isIOS && !isSingleContact) {
+            if (toastSuccess) {
+                toastSuccess("Veuillez appuyer sur 'Télécharger' puis ouvrez le fichier téléchargé depuis vos fichiers ou Safari pour ajouter tous les contacts !");
+            }
+        }
+
+        // Fetch as blob to force a real file download instead of a browser preview
+        fetch(url)
+            .then(res => res.blob())
+            .then(blob => {
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = 'contacts.vcf';
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 100);
+            })
+            .catch(err => {
+                console.error('Download failed', err);
+                // Fallback to basic link
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
     }
 }
 
@@ -237,7 +263,7 @@ export default function InvitationPage() {
                                     <div className="pb-4 border-b">
                                         <Button
                                             className="w-full flex items-center gap-2"
-                                            onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`)}
+                                            onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, false, (msg) => { alert(msg); })}
                                         >
                                             <UserPlus className="h-4 w-4" />
                                             Save All Contacts
@@ -474,7 +500,7 @@ export default function InvitationPage() {
                                     type="button"
                                     variant="outline"
                                     className="w-full flex items-center gap-2"
-                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`)}
+                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/vcf`, false, (msg) => { alert(msg); })}
                                 >
                                     <UserPlus className="h-4 w-4" />
                                     Save Contacts
