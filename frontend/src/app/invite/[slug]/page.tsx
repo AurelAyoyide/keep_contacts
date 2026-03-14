@@ -19,46 +19,56 @@ import { InvitationInfo } from '@/types';
  * On desktop, trigger a normal file download.
  */
 async function openVcf(url: string, isSingleContact: boolean = false) {
+    const isIOS = /iPhone|iPad|iPod/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    );
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
         typeof navigator !== 'undefined' ? navigator.userAgent : ''
     );
 
-    if (isMobile && typeof navigator !== 'undefined' && (navigator as any).share) {
+    if (isMobile) {
         try {
-            // Fetch the vCard data
+            // Fetch the vCard data as text
             const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'inline=true');
-            const blob = await response.blob();
+            const vcfText = await response.text();
 
-            // Create a File object that the Share API can use
-            const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
-
-            // Re-check shareability of files (some browsers share text but not files)
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Contacts',
-                    text: 'Add these contacts to your phone'
-                });
-                return; // Shared successfully
+            if (isIOS) {
+                // SPECIAL iOS TRICK: Opening a Base64 Data URI of type text/vcard 
+                // triggers the native "Add All Contacts" screen directly in Safari/Chrome.
+                const base64 = btoa(unescape(encodeURIComponent(vcfText)));
+                window.location.href = `data:text/vcard;base64,${base64}`;
+                return;
             }
+
+            // For Android or if share is supported
+            if ((navigator as any).share) {
+                const blob = new Blob([vcfText], { type: 'text/vcard' });
+                const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Contacts',
+                    });
+                    return;
+                }
+            }
+
+            // Fallback for mobile without share
+            window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
+            return;
         } catch (err) {
-            console.error('Share failed, falling back to direct link', err);
+            console.error('VCF handling failed', err);
         }
     }
 
-    // Fallback/Default behavior
-    if (isMobile) {
-        // Use inline=true to avoid attachment header and trigger browser's native contact preview
-        window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
-    } else {
-        // Desktop: trigger a proper file download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'contacts.vcf';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
+    // Desktop
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contacts.vcf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 export default function InvitationPage() {

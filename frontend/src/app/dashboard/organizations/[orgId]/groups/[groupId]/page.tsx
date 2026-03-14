@@ -46,16 +46,27 @@ export default function GroupDetailsPage() {
 
             const downloadUrl = `${api.defaults.baseURL}/export?token=${data.token}`;
 
+            const isIOS = /iPhone|iPad|iPod/i.test(
+                typeof navigator !== 'undefined' ? navigator.userAgent : ''
+            );
             const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
                 typeof navigator !== 'undefined' ? navigator.userAgent : ''
             );
 
-            if (isMobile && typeof navigator !== 'undefined' && (navigator as any).share) {
-                try {
-                    const response = await fetch(downloadUrl + '&inline=true');
-                    const blob = await response.blob();
-                    const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
+            if (isMobile) {
+                const response = await fetch(downloadUrl + '&inline=true');
+                const vcfText = await response.text();
 
+                if (isIOS) {
+                    const base64 = btoa(unescape(encodeURIComponent(vcfText)));
+                    window.location.href = `data:text/vcard;base64,${base64}`;
+                    setIsDownloading(null);
+                    return;
+                }
+
+                if ((navigator as any).share) {
+                    const blob = new Blob([vcfText], { type: 'text/vcard' });
+                    const file = new File([blob], 'contacts.vcf', { type: 'text/vcard' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
@@ -64,13 +75,8 @@ export default function GroupDetailsPage() {
                         setIsDownloading(null);
                         return;
                     }
-                } catch (err) {
-                    console.error('Dashboard share failed', err);
                 }
-            }
 
-            if (isMobile) {
-                // Inline mode for mobile: direct preview in browser
                 window.location.href = downloadUrl + '&inline=true';
             } else {
                 // Desktop: standard download

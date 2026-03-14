@@ -355,11 +355,8 @@ export class ExportsService {
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      'PRODID:-//KeepContacts//BulkImport 1.0//EN',
-      `UID:urn:uuid:${contact.id}`,
-      `N:${ln};${fn};;;${tagSuffix}`,
+      `N:${ln};${fn};;;`,
       `FN:${displayName}`,
-      `REV:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
     ];
 
     if (contact.phone) {
@@ -367,40 +364,23 @@ export class ExportsService {
     }
 
     if (contact.alternatePhone) {
-      lines.push(`TEL;TYPE=HOME,VOICE:${contact.alternatePhone}`);
+      lines.push(`TEL;TYPE=WORK,VOICE:${contact.alternatePhone}`);
     }
 
     if (contact.email) {
       lines.push(`EMAIL;TYPE=INTERNET,HOME:${contact.email}`);
     }
 
-    if (contact.dateOfBirth) {
-      const bday = new Date(contact.dateOfBirth);
-      const year = bday.getFullYear();
-      const month = String(bday.getMonth() + 1).padStart(2, '0');
-      const day = String(bday.getDate()).padStart(2, '0');
-      lines.push(`BDAY:${year}-${month}-${day}`);
-    }
-
-    if (contact.nickname) {
-      lines.push(`NICKNAME:${contact.nickname}`);
-    }
-
     if (contact.organization) {
       lines.push(`ORG:${contact.organization}`);
     }
+
     if (contact.jobTitle) {
       lines.push(`TITLE:${contact.jobTitle}`);
     }
 
-    if (contact.address || contact.city || contact.country) {
-      const adr = `;;${contact.address || ''};${contact.city || ''};;${contact.country || ''}`;
-      lines.push(`ADR;TYPE=HOME:${adr}`);
-    }
-
     if (completeTag) {
-      lines.push(`CATEGORIES:${completeTag}`);
-      lines.push(`X-ABLabel:${completeTag}`);
+      lines.push(`NOTE:Tagged as ${completeTag}`);
     }
 
     lines.push('END:VCARD');
