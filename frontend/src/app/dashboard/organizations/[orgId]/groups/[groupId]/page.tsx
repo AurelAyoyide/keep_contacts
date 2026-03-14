@@ -45,16 +45,22 @@ export default function GroupDetailsPage() {
             });
 
             const downloadUrl = `${api.defaults.baseURL}/export?token=${data.token}`;
-            
+
+            const isIOS = /iPhone|iPad|iPod/i.test(
+                typeof navigator !== 'undefined' ? navigator.userAgent : ''
+            );
             const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
                 typeof navigator !== 'undefined' ? navigator.userAgent : ''
             );
 
-            if (isMobile) {
-                // Inline mode: browser/OS handles the vCard natively
+            // iOS Safari only parses the FIRST contact of an inline VCF.
+            // For group export (which inherently contains multiple contacts),
+            // iOS MUST fall back to a standard file download (attachment).
+            if (isMobile && !isIOS) {
+                // Inline mode: Android handles the multi-vCard natively
                 window.location.href = downloadUrl + '&inline=true';
             } else {
-                // Desktop: trigger a proper file download
+                // Desktop OR iOS Multi-contact: trigger a proper file download
                 const a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = '';

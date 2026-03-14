@@ -18,16 +18,23 @@ import { InvitationInfo } from '@/types';
  * the OS intercepts it and opens the native Contacts app directly (1-click save).
  * On desktop, trigger a normal file download.
  */
-function openVcf(url: string) {
+function openVcf(url: string, isSingleContact: boolean = false) {
+    const isIOS = /iPhone|iPad|iPod/i.test(
+        typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    );
     const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
         typeof navigator !== 'undefined' ? navigator.userAgent : ''
     );
 
-    if (isMobile) {
-        // Inline mode: browser/OS handles the vCard natively
+    // iOS Safari has a quirk where it only parses the FIRST contact of an inline VCF.
+    // So for multiple contacts on iOS, we MUST trigger a normal file download (attachment).
+    // The user will see a Safari download prompt, tap "Download", then open it in Contacts natively.
+    if (isMobile && !(isIOS && !isSingleContact)) {
+        // Inline mode: Android, or iOS single contact -> browser/OS handles the vCard natively seamlessly
         window.location.href = url + (url.includes('?') ? '&' : '?') + 'inline=true';
     } else {
-        // Desktop: trigger a proper file download
+        // Desktop OR iOS Multi-contact: trigger a proper file download
+        // Since backend already sends Content-Disposition: attachment, this triggers a solid download.
         const a = document.createElement('a');
         a.href = url;
         a.download = '';
@@ -261,7 +268,7 @@ export default function InvitationPage() {
                                                     variant="ghost"
                                                     size="sm"
                                                     className="ml-2 flex-shrink-0"
-                                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/contact/${contact.id}/vcf`)}
+                                                    onClick={() => openVcf(`${api.defaults.baseURL}/export/invitation/${slug}/contact/${contact.id}/vcf`, true)}
                                                 >
                                                     <UserPlus className="h-4 w-4" />
                                                 </Button>
