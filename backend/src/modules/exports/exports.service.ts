@@ -114,10 +114,10 @@ export class ExportsService {
           exportToken.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n');
+      .join('\r\n\r\n');
     return {
       filename: `${exportToken.group.slug}-contacts.vcf`,
-      content,
+      content: content + '\r\n',
       contentType: 'text/vcard',
     };
   }
@@ -139,9 +139,9 @@ export class ExportsService {
           c.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n');
+      .join('\r\n\r\n');
 
-    return { filename: `${group.slug}-contacts.vcf`, content };
+    return { filename: `${group.slug}-contacts.vcf`, content: content + '\r\n' };
   }
 
   async exportByInvitationSlug(slug: string) {
@@ -188,10 +188,10 @@ export class ExportsService {
           invitation.group.organization.tagEnabled,
         ),
       )
-      .join('\r\n');
+      .join('\r\n\r\n');
     return {
       filename: `${invitation.group.slug}-contacts.vcf`,
-      content,
+      content: content + '\r\n',
       contentType: 'text/vcard',
     };
   }
@@ -325,6 +325,7 @@ export class ExportsService {
 
   private generateVcard(
     contact: {
+      id?: string;
       firstName?: string | null;
       lastName?: string | null;
       phone?: string | null;
@@ -354,9 +355,11 @@ export class ExportsService {
     const lines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
+      'PRODID:-//KeepContacts//iCal4j 1.0//EN',
       `N:${ln};${fn};;;${tagSuffix}`,
       `FN:${displayName}`,
-      `UID:urn:uuid:${contact.id}`, // Add UID to prevent iOS duplication bugs
+      `UID:urn:uuid:${contact.id}`,
+      `REV:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
     ];
 
     if (contact.phone) {
