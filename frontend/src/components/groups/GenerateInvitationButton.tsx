@@ -68,7 +68,7 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
     const [requiredFields, setRequiredFields] = useState<string[]>(['firstName', 'lastName', 'phone']);
     const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
     const [showContactSelector, setShowContactSelector] = useState(false);
-    const [currentInvitationData, setCurrentInvitationData] = useState<{requiredFields: string[], allowDownload: boolean, allowedContactIds?: string[]} | null>(null);
+    const [currentInvitationData, setCurrentInvitationData] = useState<{ requiredFields: string[], allowDownload: boolean, allowedContactIds?: string[] } | null>(null);
     const { success, error } = useGlobalToast();
 
     // Fetch contacts for the group
@@ -188,10 +188,10 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
         setIsFetchingData(true);
         try {
             const { data: invitationDetail } = await api.get(`/groups/${groupId}/invitation/${invId}`);
-            
+
             if (invitationDetail) {
                 console.log('Loaded invitation detail:', invitationDetail);
-                
+
                 // Parse requiredFields
                 let fields = invitationDetail.requiredFields;
                 if (typeof fields === 'string') {
@@ -199,15 +199,15 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                 } else if (!Array.isArray(fields)) {
                     fields = ['firstName', 'lastName', 'phone'];
                 }
-                
+
                 const fieldsArray = Array.isArray(fields) ? fields : ['firstName', 'lastName', 'phone'];
                 setRequiredFields(fieldsArray);
                 setAllowDownload(invitationDetail.allowDownload !== false);
-                
+
                 // Load allowed contact IDs
                 const allowedIds = invitationDetail.allowedContactIds || [];
                 setSelectedContactIds(allowedIds);
-                
+
                 // Cache the data
                 setCurrentInvitationData({
                     requiredFields: fieldsArray,
@@ -226,13 +226,43 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
         }
     };
 
-    const handleCopy = () => {
+    const handleCopy = async () => {
         if (!slug) return;
         const invitationUrl = `${window.location.origin}/invite/${slug}`;
-        navigator.clipboard.writeText(invitationUrl);
-        setCopied(true);
-        success('Link copied to clipboard');
-        setTimeout(() => setCopied(false), 2000);
+
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(invitationUrl);
+            } else {
+                // Fallback for missing clipboard API (e.g. non-HTTPS, or some mobile browsers)
+                const textArea = document.createElement("textarea");
+                textArea.value = invitationUrl;
+
+                // Avoid scrolling to bottom
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+
+                document.body.removeChild(textArea);
+            }
+
+            setCopied(true);
+            success('Link copied to clipboard');
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy', err);
+            error('Failed to copy link');
+        }
     };
 
     // Load invitation data when modal opens in edit mode
@@ -258,12 +288,12 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                             {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                         </Button>
                     </div>
-                    <Button 
+                    <Button
                         onClick={() => {
                             setIsEditMode(true);
                             setIsModalOpen(true);
-                        }} 
-                        size="sm" 
+                        }}
+                        size="sm"
                         variant="outline"
                         className="w-full"
                     >
@@ -316,8 +346,8 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                                 ))}
                             </div>
                             <p className="text-xs text-muted-foreground mt-3">
-                                {isEditMode 
-                                    ? "Users must provide these fields to submit the form" 
+                                {isEditMode
+                                    ? "Users must provide these fields to submit the form"
                                     : "Fields marked as required must be provided by users"}
                             </p>
                         </div>
@@ -410,29 +440,29 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                                     )}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    {selectedContactIds.length > 0 
-                                        ? `${selectedContactIds.length} contact${selectedContactIds.length === 1 ? '' : 's'} selected` 
+                                    {selectedContactIds.length > 0
+                                        ? `${selectedContactIds.length} contact${selectedContactIds.length === 1 ? '' : 's'} selected`
                                         : 'All contacts will be downloadable (leave empty)'}
                                 </p>
                             </div>
                         )}
 
                         <div className="flex justify-end space-x-2 pt-4 border-t">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
+                            <Button
+                                type="button"
+                                variant="outline"
                                 onClick={() => {
                                     setIsModalOpen(false);
                                     setIsEditMode(false);
                                     setSelectedContactIds([]);
-                                }} 
+                                }}
                                 disabled={isLoading}
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="button" 
-                                onClick={isEditMode ? handleUpdate : handleGenerate} 
+                            <Button
+                                type="button"
+                                onClick={isEditMode ? handleUpdate : handleGenerate}
                                 isLoading={isLoading}
                                 disabled={requiredFields.length === 0}
                             >
@@ -447,10 +477,10 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
 
     return (
         <>
-            <Button 
-                onClick={() => setIsModalOpen(true)} 
-                size="sm" 
-                variant="outline" 
+            <Button
+                onClick={() => setIsModalOpen(true)}
+                size="sm"
+                variant="outline"
                 className="w-full sm:w-auto"
             >
                 <Link2 className="mr-2 h-4 w-4" />
@@ -501,8 +531,8 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                             ))}
                         </div>
                         <p className="text-xs text-muted-foreground mt-3">
-                            {isEditMode 
-                                ? "Users must provide these fields to submit the form" 
+                            {isEditMode
+                                ? "Users must provide these fields to submit the form"
                                 : "Fields marked as required must be provided by users"}
                         </p>
                     </div>
@@ -545,21 +575,21 @@ export function GenerateInvitationButton({ groupId, existingSlug }: GenerateInvi
                     )}
 
                     <div className="flex justify-end space-x-2 pt-4 border-t">
-                        <Button 
-                            type="button" 
-                            variant="outline" 
+                        <Button
+                            type="button"
+                            variant="outline"
                             onClick={() => {
                                 setIsModalOpen(false);
                                 setIsEditMode(false);
                                 setSelectedContactIds([]);
-                            }} 
+                            }}
                             disabled={isLoading}
                         >
                             Cancel
                         </Button>
-                        <Button 
-                            type="button" 
-                            onClick={isEditMode ? handleUpdate : handleGenerate} 
+                        <Button
+                            type="button"
+                            onClick={isEditMode ? handleUpdate : handleGenerate}
                             isLoading={isLoading}
                             disabled={requiredFields.length === 0}
                         >

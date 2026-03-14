@@ -40,13 +40,43 @@ export function ExportTokensList({ groupId }: ExportTokensListProps) {
         },
     });
 
-    const handleCopy = (token: ExportToken) => {
+    const handleCopy = async (token: ExportToken) => {
         // Construct URL: GET /export?token=...
         const url = `${api.defaults.baseURL}/export?token=${token.token}`;
-        navigator.clipboard.writeText(url); // Or token.url if backend provides it
-        setCopiedId(token.id);
-        success('Download link copied');
-        setTimeout(() => setCopiedId(null), 2000);
+
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                // Fallback for missing clipboard API (e.g. non-HTTPS, or some mobile browsers)
+                const textArea = document.createElement("textarea");
+                textArea.value = url;
+
+                // Avoid scrolling to bottom
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+
+                document.body.removeChild(textArea);
+            }
+
+            setCopiedId(token.id);
+            success('Download link copied');
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy', err);
+            error('Failed to copy link');
+        }
     };
 
     if (isLoading) return <Spinner />;
