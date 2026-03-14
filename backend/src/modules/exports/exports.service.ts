@@ -114,7 +114,7 @@ export class ExportsService {
           exportToken.group.organization.tagEnabled,
         ),
       )
-      .join('\n');
+      .join('\r\n');
     return {
       filename: `${exportToken.group.slug}-contacts.vcf`,
       content,
@@ -139,7 +139,7 @@ export class ExportsService {
           c.group.organization.tagEnabled,
         ),
       )
-      .join('\n');
+      .join('\r\n');
 
     return { filename: `${group.slug}-contacts.vcf`, content };
   }
@@ -188,7 +188,7 @@ export class ExportsService {
           invitation.group.organization.tagEnabled,
         ),
       )
-      .join('\n');
+      .join('\r\n');
     return {
       filename: `${invitation.group.slug}-contacts.vcf`,
       content,
@@ -345,7 +345,7 @@ export class ExportsService {
     const fn = contact.firstName || '';
     const ln = contact.lastName || '';
     const completeTag = this.getCompleteTag(contact.tag || null, autoTag || null, tagEnabled);
-    
+
     // Format: "FirstName LastName" or "FirstName LastName - Tag"
     const fullName = [fn, ln].filter(Boolean).join(' ');
     const displayName = completeTag ? `${fullName} - ${completeTag}` : fullName;
@@ -356,6 +356,7 @@ export class ExportsService {
       'VERSION:3.0',
       `N:${ln};${fn};;;${tagSuffix}`,
       `FN:${displayName}`,
+      `UID:urn:uuid:${contact.id}`, // Add UID to prevent iOS duplication bugs
     ];
 
     if (contact.phone) {
@@ -401,6 +402,7 @@ export class ExportsService {
 
     lines.push('END:VCARD');
 
-    return lines.join('\n');
+    // vCard standard requires CRLF line endings
+    return lines.join('\r\n');
   }
 }
