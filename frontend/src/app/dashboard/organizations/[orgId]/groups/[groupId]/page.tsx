@@ -46,52 +46,21 @@ export default function GroupDetailsPage() {
 
             const downloadUrl = `${api.defaults.baseURL}/export?token=${data.token}`;
 
-            const isIOS = /iPhone|iPad|iPod/i.test(
-                typeof navigator !== 'undefined' ? navigator.userAgent : ''
-            );
             const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Windows Phone/i.test(
                 typeof navigator !== 'undefined' ? navigator.userAgent : ''
             );
 
-            // iOS Safari only parses the FIRST contact of an inline VCF.
-            // For group export (which inherently contains multiple contacts),
-            // iOS MUST fall back to a standard file download (attachment).
-            if (isMobile && !isIOS) {
-                // Inline mode: Android handles the multi-vCard natively
+            if (isMobile) {
+                // Inline mode for mobile: direct preview in browser
                 window.location.href = downloadUrl + '&inline=true';
             } else {
-                if (isIOS) {
-                    // Show instructional alert to iOS users since they must use Safari Downloads and Files app
-                    alert("Veuillez appuyer sur 'Télécharger' puis ouvrir le fichier depuis vos téléchargements Safari ou Fichiers pour importer !");
-                }
-
-                // Fetch as blob to force a real file download instead of a browser preview
-                // This forces iOS Safari to show the "Do you want to download..." prompt.
-                fetch(downloadUrl)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const blobUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = blobUrl;
-                        a.download = 'contacts.vcf';
-                        document.body.appendChild(a);
-                        a.click();
-                        setTimeout(() => {
-                            document.body.removeChild(a);
-                            window.URL.revokeObjectURL(blobUrl);
-                        }, 100);
-                    })
-                    .catch(err => {
-                        console.error('Download fetch failed', err);
-                        // Fallback
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = '';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                    });
+                // Desktop: standard download
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'contacts.vcf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             }
 
             success(`Download ${format.toUpperCase()} initiated`);

@@ -354,42 +354,42 @@ export class ExportsService {
 
     const lines = [
       'BEGIN:VCARD',
-      'VERSION:3.0',
-      'PRODID:-//KeepContacts//iCal4j 1.0//EN',
-      `N:${ln};${fn};;;${tagSuffix}`,
-      `FN:${displayName}`,
+      'VERSION:4.0',
+      'PRODID:-//KeepContacts//BulkImport 1.0//EN',
+      'KIND:individual',
       `UID:urn:uuid:${contact.id}`,
+      `N:${ln};${fn};;;`,
+      `FN:${displayName}`,
       `REV:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`,
     ];
 
     if (contact.phone) {
-      lines.push(`TEL;TYPE=CELL:${contact.phone}`);
+      // For vCard 4.0, TEL values can be URIs
+      const cleanPhone = contact.phone.replace(/\s+/g, '');
+      lines.push(`TEL;TYPE=cell,voice,text;VALUE=uri:tel:${cleanPhone}`);
     }
 
-    // Add alternate phone if it exists
     if (contact.alternatePhone) {
-      lines.push(`TEL;TYPE=CELL:${contact.alternatePhone}`);
+      const cleanPhone = contact.alternatePhone.replace(/\s+/g, '');
+      lines.push(`TEL;TYPE=home,voice;VALUE=uri:tel:${cleanPhone}`);
     }
 
     if (contact.email) {
-      lines.push(`EMAIL:${contact.email}`);
+      lines.push(`EMAIL;TYPE=internet,home:${contact.email}`);
     }
 
-    // Add date of birth if it exists
     if (contact.dateOfBirth) {
       const bday = new Date(contact.dateOfBirth);
       const year = bday.getFullYear();
       const month = String(bday.getMonth() + 1).padStart(2, '0');
       const day = String(bday.getDate()).padStart(2, '0');
-      lines.push(`BDAY:${year}-${month}-${day}`);
+      lines.push(`BDAY:${year}${month}${day}`); // vCard 4.0 prefers CCYYMMDD
     }
 
-    // Add nickname
     if (contact.nickname) {
       lines.push(`NICKNAME:${contact.nickname}`);
     }
 
-    // Add organization & job title
     if (contact.organization) {
       lines.push(`ORG:${contact.organization}`);
     }
@@ -397,15 +397,18 @@ export class ExportsService {
       lines.push(`TITLE:${contact.jobTitle}`);
     }
 
-    // Add address
     if (contact.address || contact.city || contact.country) {
       const adr = `;;${contact.address || ''};${contact.city || ''};;${contact.country || ''}`;
-      lines.push(`ADR;TYPE=HOME:${adr}`);
+      lines.push(`ADR;TYPE=home:${adr}`);
+    }
+
+    if (completeTag) {
+      lines.push(`CATEGORIES:${completeTag}`);
     }
 
     lines.push('END:VCARD');
 
-    // vCard standard requires CRLF line endings
+    // CRLF line endings
     return lines.join('\r\n');
   }
 }
